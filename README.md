@@ -2,7 +2,9 @@
 
 **Your daily objectives, right where you need them.** A lightweight, client-side quest tracker that keeps the current Stonewards daily missions and their live progress visible during a run.
 
-![Daily Quest Tracker — illustrated panel preview](assets/preview.png)
+<p align="center">
+  <img src="assets/preview.png" alt="Daily Quest Tracker — HUD preview" width="380">
+</p>
 
 > Illustrated UI preview. The in-game HUD is more compact and uses live quest data.
 
