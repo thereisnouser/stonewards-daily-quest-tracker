@@ -45,17 +45,19 @@ namespace StonewardsDailyQuestTracker
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
             float readabilityScale, bool autoScaleToResolution,
-            bool hideCompleted, bool showStatus,
+            CompletedQuestMode completedMode, bool showStatus,
             Rect? currencyBadge, int currencyGap)
         {
             if (_heading == null) InitializeStyles();
 
             // This is only a tiny cached list of live quest states, never an
             // enumeration of the game's database assets.
-            int matching = 0;
+            int remaining = 0;
             for (int i = 0; i < quests.Count; i++)
-                if (!hideCompleted || !quests[i].Completed)
-                    matching++;
+                if (!quests[i].Completed)
+                    remaining++;
+            int matching = completedMode == CompletedQuestMode.Hide
+                ? remaining : quests.Count;
 
             bool empty = matching == 0;
             if (empty && quests.Count == 0 && !showStatus) return;
@@ -134,9 +136,10 @@ namespace StonewardsDailyQuestTracker
                 GUI.matrix = Matrix4x4.TRS(new Vector3(x, y, 0f),
                     Quaternion.identity, new Vector3(factor, factor, 1f));
                 DrawBackground(height);
-                GUI.Label(new Rect(13, 3, Width - 70, 26), "DAILY QUESTS", _heading);
-                GUI.Label(new Rect(Width - 55, 3, 40, 26),
-                    quests.Count.ToString(), _rowCounter);
+                GUI.Label(new Rect(13, 3, Width - 132, 26), "DAILY QUESTS", _heading);
+                GUI.Label(new Rect(Width - 120, 3, 105, 26),
+                    quests.Count == 0 ? "—" : remaining + "/" + quests.Count + " LEFT",
+                    _rowCounter);
 
                 if (empty)
                 {
@@ -148,12 +151,24 @@ namespace StonewardsDailyQuestTracker
                 }
 
                 int row = 0;
+                // Unfinished objectives always come first, in the order
+                // selected by the game. Completed ones follow in Mark mode.
                 for (int i = 0; i < quests.Count && row < MaxVisible; i++)
                 {
                     QuestView q = quests[i];
-                    if (hideCompleted && q.Completed) continue;
+                    if (q.Completed) continue;
                     DrawRow(q, HeaderHeight + 3f + row * ItemHeight);
                     row++;
+                }
+                if (completedMode == CompletedQuestMode.Mark)
+                {
+                    for (int i = 0; i < quests.Count && row < MaxVisible; i++)
+                    {
+                        QuestView q = quests[i];
+                        if (!q.Completed) continue;
+                        DrawRow(q, HeaderHeight + 3f + row * ItemHeight);
+                        row++;
+                    }
                 }
                 if (overflow > 0)
                 {
@@ -188,11 +203,16 @@ namespace StonewardsDailyQuestTracker
             const float counterX = Width - counterWidth - 13f;
             const float labelWidth = counterX - labelX - 5f;
 
-            // A single readable line per quest; completed rows are green.
-            DrawRect(8, y + 6, 2, 17, q.Completed ? Success : GoldText);
+            // Completed rows are explicitly check-marked (rather than only
+            // tinted green). The tick is drawn from rectangles so it remains
+            // visible even if the game's font has no Unicode check glyph.
+            if (q.Completed)
+                DrawTick(7f, y + 7f);
+            else
+                DrawRect(8, y + 6, 2, 17, GoldText);
+            GUIStyle rowStyle = q.Completed ? _rowDone : _rowTitle;
             GUI.Label(new Rect(labelX, y + 1, labelWidth, 24f),
-                FitText(q.Title, labelWidth, q.Completed ? _rowDone : _rowTitle),
-                q.Completed ? _rowDone : _rowTitle);
+                FitText(q.Title, labelWidth, rowStyle), rowStyle);
 
             string counter = q.Progress.HasValue && q.Target.HasValue
                 ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value
@@ -201,6 +221,17 @@ namespace StonewardsDailyQuestTracker
                 counter, q.Completed ? _rowCounterDone : _rowCounter);
 
             DrawRect(11, y + ItemHeight - 2, Width - 22, 1, RowDivider);
+        }
+
+        private static void DrawTick(float x, float y)
+        {
+            DrawRect(x, y + 6, 3, 3, Success);
+            DrawRect(x + 3, y + 9, 3, 3, Success);
+            DrawRect(x + 6, y + 12, 3, 3, Success);
+            DrawRect(x + 9, y + 9, 3, 3, Success);
+            DrawRect(x + 12, y + 6, 3, 3, Success);
+            DrawRect(x + 15, y + 3, 3, 3, Success);
+            DrawRect(x + 18, y, 3, 3, Success);
         }
 
         private string FitText(string value, float availableWidth, GUIStyle style)
