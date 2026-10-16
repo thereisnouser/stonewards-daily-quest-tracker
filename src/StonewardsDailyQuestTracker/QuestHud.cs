@@ -50,7 +50,8 @@ namespace StonewardsDailyQuestTracker
             CompletedQuestMode completedMode, bool showStatus,
             Rect? currencyBadge, int currencyGap,
             int totalDailyQuests, bool hasSeenDailyQuests,
-            float unitsPerPixelX = 1f, float unitsPerPixelY = 1f)
+            float unitsPerPixelX = 1f, float unitsPerPixelY = 1f,
+            float originScreenX = 0f, float originScreenY = 0f)
         {
             if (_heading == null) InitializeStyles();
 
@@ -142,7 +143,8 @@ namespace StonewardsDailyQuestTracker
                 // works in panel units, so compensate for PanelSettings scaling.
                 // Multiply rather than replace the existing container matrix.
                 GUI.matrix = matrix * Matrix4x4.TRS(
-                    new Vector3(x * unitsPerPixelX, y * unitsPerPixelY, 0f),
+                    new Vector3((x - originScreenX) * unitsPerPixelX,
+                        (y - originScreenY) * unitsPerPixelY, 0f),
                     Quaternion.identity,
                     new Vector3(factor * unitsPerPixelX,
                         factor * unitsPerPixelY, 1f));

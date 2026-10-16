@@ -234,10 +234,13 @@ namespace StonewardsDailyQuestTracker
             if (!_nativeHudLayer.Attached)
                 return;
             DrawHud(_nativeHudLayer.UnitsPerPixelX,
-                _nativeHudLayer.UnitsPerPixelY);
+                _nativeHudLayer.UnitsPerPixelY,
+                _nativeHudLayer.OriginScreenX,
+                _nativeHudLayer.OriginScreenY);
         }
 
-        private void DrawHud(float unitsPerPixelX, float unitsPerPixelY)
+        private void DrawHud(float unitsPerPixelX, float unitsPerPixelY,
+            float originScreenX = 0f, float originScreenY = 0f)
         {
             if (!_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
                 return;
@@ -254,7 +257,8 @@ namespace StonewardsDailyQuestTracker
                 _completedQuestMode.Value, _showMissingDataNotice.Value,
                 currencyBounds, _currencyGap.Value,
                 _reader.TotalDailyQuests, _reader.HasSeenDailyQuests,
-                unitsPerPixelX, unitsPerPixelY);
+                unitsPerPixelX, unitsPerPixelY,
+                originScreenX, originScreenY);
         }
 
         private static bool IsBlocked()

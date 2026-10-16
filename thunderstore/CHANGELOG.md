@@ -5,7 +5,8 @@
 - Keep the remaining-quest counter based on the game's total daily quest count, even when completed quests disappear from the active list (e.g. 4/5 LEFT).
 - Fix native HUD draw order so the quest panel remains visible rather than being placed behind full-screen game HUD elements.
 - Keep a legacy OnGUI fallback if the native overlay stops repainting.
-- Place the quest panel beneath identifiable native notification layers.
+- Place the quest panel directly before Stonewards' real `QuestNotificationHolder` in the native UI tree (verified by F9 diagnostics), allowing quest completion, player join and other game notices to overlap it.
+- Preserve screen-pixel positioning even if the notification layer uses a nested full-screen parent.
 - Add `Appearance.RenderBehindGameUI` (enabled by default) with an option to return to legacy OnGUI rendering.
 
 ## 0.1.1

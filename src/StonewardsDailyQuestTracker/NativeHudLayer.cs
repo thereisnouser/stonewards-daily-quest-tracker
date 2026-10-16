@@ -6,19 +6,28 @@ using UnityEngine.UIElements;
 namespace StonewardsDailyQuestTracker
 {
     /// <summary>
-    /// Renders the existing IMGUI-based HUD inside the game's UI Toolkit panel.
-    /// Stays above the game's HUD background while yielding to identifiable
-    /// notification layers. Falls back to OnGUI if the container cannot repaint.
+    /// Places our IMGUI quest HUD in the same native UI hierarchy as the
+    /// game's QuestNotificationHolder, directly BEFORE that notification layer.
+    /// This guarantees the game notification subtree is rendered on top without
+    /// moving game elements, modifying its quest logic or hiding the whole HUD.
+    /// Legacy OnGUI is used when the native container cannot repaint.
     /// </summary>
     internal sealed class NativeHudLayer
     {
+        private const string NotificationHolderName = "QuestNotificationHolder";
+        private const float MinViewportCoverage = 0.92f;
+        private const float RetrySeconds = 5f;
+
         private readonly Action _draw;
         private readonly ManualLogSource _log;
-        private VisualElement _root;
+        private VisualElement _panelRoot;
+        private VisualElement _parent;
+        private VisualElement _notificationLayer;
         private IMGUIContainer _container;
-        private bool _loggedAttachmentFailure;
+        private float _nextSearch;
         private float _lastRepaintTime = -1f;
         private float _attachedTime;
+        private bool _reportedUnavailable;
 
         public NativeHudLayer(Action draw, ManualLogSource log)
         {
@@ -27,37 +36,83 @@ namespace StonewardsDailyQuestTracker
         }
 
         public bool Attached =>
-            _root != null && _container != null &&
-            _container.parent == _root && _container.panel != null;
+            _container != null && _parent != null && _panelRoot != null &&
+            _container.parent == _parent &&
+            _notificationLayer != null && _notificationLayer.parent == _parent &&
+            _container.panel != null && _container.panel == _panelRoot.panel;
 
         public bool HasRecentRepaint =>
             Attached && _lastRepaintTime >= _attachedTime &&
-            Time.unscaledTime - _lastRepaintTime < 0.75f;
+            Time.unscaledTime - _lastRepaintTime < .75f;
 
+        // GUI.matrix inside a UI Toolkit IMGUIContainer uses panel points,
+        // whereas QuestHud calculates global physical screen pixels.
         public float UnitsPerPixelX =>
-            Attached && Screen.width > 0 && _root.worldBound.width > 0f
-                ? _root.worldBound.width / Screen.width : 1f;
+            Attached && Screen.width > 0 && _panelRoot.worldBound.width > 0f
+                ? _panelRoot.worldBound.width / Screen.width : 1f;
 
         public float UnitsPerPixelY =>
-            Attached && Screen.height > 0 && _root.worldBound.height > 0f
-                ? _root.worldBound.height / Screen.height : 1f;
+            Attached && Screen.height > 0 && _panelRoot.worldBound.height > 0f
+                ? _panelRoot.worldBound.height / Screen.height : 1f;
 
-        public void Attach(VisualElement root)
+        // Offsets compensate when the notification layer's nearest full-screen
+        // parent doesn't begin at the panel's own coordinate origin.
+        public float OriginScreenX =>
+            Attached && _container.worldBound.width > 0f
+                ? (_container.worldBound.xMin - _panelRoot.worldBound.xMin) /
+                  UnitsPerPixelX : 0f;
+
+        public float OriginScreenY =>
+            Attached && _container.worldBound.height > 0f
+                ? (_container.worldBound.yMin - _panelRoot.worldBound.yMin) /
+                  UnitsPerPixelY : 0f;
+
+        public void Attach(VisualElement panelRoot)
         {
-            if (root == null || root.panel == null)
+            if (panelRoot == null || panelRoot.panel == null)
             {
                 Detach();
                 return;
             }
-            if (Attached && ReferenceEquals(_root, root))
+
+            if (Attached && ReferenceEquals(_panelRoot, panelRoot))
                 return;
 
-            Detach();
+            if (_container != null)
+                Detach();
+
+            if (Time.unscaledTime < _nextSearch)
+                return;
+
             try
             {
-                // Track actual Repaint events. A mounted IMGUIContainer is not
-                // proof that Unity is painting it; the legacy HUD stays as a
-                // fallback until the native surface has repainted.
+                // The diagnostic captured the actual game node:
+                // [UI] -> QuestNotificationHolder -> QuestNotificationParent
+                // -> UINotification (e.g. "Player Joined" / "Quest completed").
+                VisualElement holder = panelRoot.Q<VisualElement>(NotificationHolderName);
+                if (holder == null || holder.panel != panelRoot.panel)
+                {
+                    Retry("QuestNotificationHolder not found yet.");
+                    return;
+                }
+
+                // Prefer a direct sibling of QuestNotificationHolder. If its
+                // parent is not a full-screen layer, climb just far enough to
+                // find a screen-sized parent; preserve exact sibling ordering.
+                Rect viewport = panelRoot.worldBound;
+                VisualElement notificationBranch = holder;
+                VisualElement parent = notificationBranch.parent;
+                while (parent != null && !CoversViewport(parent.worldBound, viewport))
+                {
+                    notificationBranch = parent;
+                    parent = notificationBranch.parent;
+                }
+                if (parent == null)
+                {
+                    Retry("Notification hierarchy has no full-screen parent.");
+                    return;
+                }
+
                 var container = new IMGUIContainer(() =>
                 {
                     if (Event.current != null &&
@@ -70,65 +125,50 @@ namespace StonewardsDailyQuestTracker
                 container.focusable = false;
                 container.style.position = Position.Absolute;
                 container.style.left = 0;
-                container.style.right = 0;
                 container.style.top = 0;
+                container.style.right = 0;
                 container.style.bottom = 0;
                 container.style.overflow = Overflow.Hidden;
 
-                // SendToBack() previously hid the tracker behind the game's
-                // fullscreen HUD layers. Newly added siblings render above
-                // older ones. Keep the quest panel in front of the background,
-                // but immediately behind an identifiable notification layer.
-                root.Add(container);
-                VisualElement notifications = FindNotificationSibling(root, container);
-                if (notifications != null)
-                    container.PlaceBehind(notifications);
+                // In UI Toolkit, later siblings render over earlier siblings.
+                // Our panel is now the immediately preceding sibling, not an
+                // unrelated overlay appended above every element in the game.
+                parent.Add(container);
+                container.PlaceBehind(notificationBranch);
 
-                _root = root;
+                _panelRoot = panelRoot;
+                _parent = parent;
+                _notificationLayer = notificationBranch;
                 _container = container;
                 _attachedTime = Time.unscaledTime;
                 _lastRepaintTime = -1f;
-                _loggedAttachmentFailure = false;
-                _log.LogInfo(notifications != null
-                    ? "Daily quest HUD placed beneath the native notification layer."
-                    : "Daily quest HUD attached in front of base HUD layers. " +
-                      "Waiting for native repaint.");
+                _reportedUnavailable = false;
+                _log.LogInfo("Quest HUD placed directly behind game notification branch '" +
+                    notificationBranch.name + "' beneath '" + parent.name + "'.");
             }
             catch (Exception ex)
             {
                 Detach();
-                if (!_loggedAttachmentFailure)
-                {
-                    _loggedAttachmentFailure = true;
-                    _log.LogWarning("Native HUD layering unavailable. " +
-                        "Using legacy OnGUI fallback: " + ex.Message);
-                }
+                Retry("Native HUD placement failed: " + ex.Message);
             }
         }
 
-        // Keep the scan strictly to direct siblings; descending into the
-        // gameplay UI and moving its ancestor would hide the quest panel again.
-        private static VisualElement FindNotificationSibling(
-            VisualElement root, VisualElement ownContainer)
+        private void Retry(string reason)
         {
-            for (int i = 0; i < root.childCount; i++)
-            {
-                VisualElement candidate = root.ElementAt(i);
-                if (candidate == ownContainer) continue;
-                if (HasNotificationName(candidate.name))
-                    return candidate;
-                foreach (string className in candidate.GetClasses())
-                    if (HasNotificationName(className))
-                        return candidate;
-            }
-            return null;
+            _nextSearch = Time.unscaledTime + RetrySeconds;
+            if (_reportedUnavailable) return;
+            _reportedUnavailable = true;
+            _log.LogWarning(reason + " Using legacy HUD until native notifications are available.");
         }
 
-        private static bool HasNotificationName(string value)
+        private static bool CoversViewport(Rect candidate, Rect viewport)
         {
-            if (string.IsNullOrEmpty(value)) return false;
-            return value.IndexOf("notification", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   value.IndexOf("toast", StringComparison.OrdinalIgnoreCase) >= 0;
+            return candidate.width >= viewport.width * MinViewportCoverage &&
+                   candidate.height >= viewport.height * MinViewportCoverage &&
+                   candidate.xMin <= viewport.xMin + viewport.width * .04f &&
+                   candidate.yMin <= viewport.yMin + viewport.height * .04f &&
+                   candidate.xMax >= viewport.xMax - viewport.width * .04f &&
+                   candidate.yMax >= viewport.yMax - viewport.height * .04f;
         }
 
         public void Detach()
@@ -139,7 +179,9 @@ namespace StonewardsDailyQuestTracker
                 catch (Exception) { }
             }
             _container = null;
-            _root = null;
+            _panelRoot = null;
+            _parent = null;
+            _notificationLayer = null;
             _lastRepaintTime = -1f;
         }
     }
