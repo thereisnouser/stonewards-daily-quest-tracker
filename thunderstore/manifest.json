@@ -1,6 +1,6 @@
 {
   "name": "DailyQuestTracker",
-  "version_number": "0.1.0",
+  "version_number": "0.1.1",
   "website_url": "https://github.com/thereisnouser/stonewards-daily-quest-tracker",
   "description": "A compact client-side HUD showing live Stonewards daily quests and progress. Auto-position below coins, scale to your screen, and hide or mark completed objectives.",
   "dependencies": [

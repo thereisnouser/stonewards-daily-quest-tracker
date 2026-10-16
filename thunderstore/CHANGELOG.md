@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Fixed the Thunderstore description by removing the oversized duplicate preview image.
+- Kept the package icon, live quest tracking and all in-game behavior unchanged.
+
 ## 0.1.0 — Initial public release
 
 - Show all current daily missions with their real-time progress directly during a match.
