@@ -38,7 +38,13 @@ namespace StonewardsDailyQuestTracker
         private VisualElement _parent;
         private VisualElement _notificationBranch;
         private VisualElement _panel;
-        private VisualElement _header;
+        // Mirror QuestHud.DrawBackground/DrawFrame exactly: two stepped
+        // background pieces, two stepped header pieces and twelve border
+        // segments. A plain CSS border loses the game's cut-off corners.
+        private readonly VisualElement[] _backgroundPieces = new VisualElement[2];
+        private readonly VisualElement[] _headerPieces = new VisualElement[2];
+        private readonly VisualElement[] _framePieces = new VisualElement[12];
+        private VisualElement _headerDivider;
         private VisualElement _headerAccent;
         private Label _heading;
         private Label _count;
@@ -310,14 +316,20 @@ namespace StonewardsDailyQuestTracker
             _panel = new VisualElement { name = "StonewardsDailyQuestTracker" };
             _panel.pickingMode = PickingMode.Ignore;
             _panel.style.position = Position.Absolute;
-            _panel.style.backgroundColor = MainFill;
-            _panel.style.borderLeftColor = GoldFrame;
-            _panel.style.borderRightColor = GoldFrame;
-            _panel.style.borderTopColor = GoldFrame;
-            _panel.style.borderBottomColor = GoldFrame;
+            // Keep the panel container itself transparent. The stepped
+            // silhouette must expose the world at all four cut-off corners.
+            _panel.style.backgroundColor = Color.clear;
             _panel.style.overflow = Overflow.Hidden;
 
-            _header = MakeRect(_panel, HeaderFill);
+            // Order matters: background, title bar, frame, then text.
+            // Reproduce the exact geometry of legacy QuestHud.DrawBackground.
+            for (int i = 0; i < _backgroundPieces.Length; i++)
+                _backgroundPieces[i] = MakeRect(_panel, MainFill);
+            for (int i = 0; i < _headerPieces.Length; i++)
+                _headerPieces[i] = MakeRect(_panel, HeaderFill);
+            for (int i = 0; i < _framePieces.Length; i++)
+                _framePieces[i] = MakeRect(_panel, GoldFrame);
+            _headerDivider = MakeRect(_panel, GoldFrame);
             _headerAccent = MakeRect(_panel, GoldText);
             _heading = MakeLabel(_panel, GoldText, TextAnchor.MiddleLeft);
             _count = MakeLabel(_panel, GoldText, TextAnchor.MiddleRight);
@@ -378,11 +390,28 @@ namespace StonewardsDailyQuestTracker
         {
             _panel.style.width = Width * sx;
             _panel.style.height = height * sy;
-            _panel.style.borderTopWidth = 2f * sy;
-            _panel.style.borderBottomWidth = 2f * sy;
-            _panel.style.borderLeftWidth = 2f * sx;
-            _panel.style.borderRightWidth = 2f * sx;
-            SetRect(_header, 2, 2, Width - 4, HeaderHeight - 2, sx, sy);
+
+            // The original pixel-stepped shape from QuestHud.DrawBackground.
+            SetRect(_backgroundPieces[0], 7, 0, Width - 14, height, sx, sy);
+            SetRect(_backgroundPieces[1], 0, 7, Width, height - 14, sx, sy);
+            SetRect(_headerPieces[0], 7, 2, Width - 14, HeaderHeight - 2, sx, sy);
+            SetRect(_headerPieces[1], 2, 7, Width - 4, HeaderHeight - 7, sx, sy);
+
+            // QuestHud.DrawFrame: gold 2 px outline with clipped stair corners.
+            SetRect(_framePieces[0], 8, 0, Width - 16, 2, sx, sy);
+            SetRect(_framePieces[1], 5, 2, 3, 2, sx, sy);
+            SetRect(_framePieces[2], 2, 5, 3, 2, sx, sy);
+            SetRect(_framePieces[3], Width - 8, 2, 3, 2, sx, sy);
+            SetRect(_framePieces[4], Width - 5, 5, 3, 2, sx, sy);
+            SetRect(_framePieces[5], 0, 7, 2, height - 14, sx, sy);
+            SetRect(_framePieces[6], Width - 2, 7, 2, height - 14, sx, sy);
+            SetRect(_framePieces[7], 8, height - 2, Width - 16, 2, sx, sy);
+            SetRect(_framePieces[8], 5, height - 4, 3, 2, sx, sy);
+            SetRect(_framePieces[9], 2, height - 7, 3, 2, sx, sy);
+            SetRect(_framePieces[10], Width - 8, height - 4, 3, 2, sx, sy);
+            SetRect(_framePieces[11], Width - 5, height - 7, 3, 2, sx, sy);
+
+            SetRect(_headerDivider, 2, HeaderHeight - 1, Width - 4, 1, sx, sy);
             SetRect(_headerAccent, 10, HeaderHeight - 4, 46, 1, sx, sy);
             SetRect(_heading, 13, 3, Width - 132, 26, sx, sy);
             SetRect(_count, Width - 120, 3, 105, 26, sx, sy);
