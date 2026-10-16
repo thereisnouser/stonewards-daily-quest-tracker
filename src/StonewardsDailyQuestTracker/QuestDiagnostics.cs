@@ -101,6 +101,29 @@ namespace StonewardsDailyQuestTracker
                     output.AppendLine("  METHOD " + DescribeType(method.ReturnType) + " " +
                         method.Name + "(" + parameters + ")");
                 }
+                // Read a small, bounded snapshot of relevant static quest
+                // manager fields. A schema alone cannot show where progress is.
+                // Avoid game assets and definitions: we need runtime state.
+                if (HasToken(type.Name, "manager", "tracker", "system",
+                        "progress", "controller") &&
+                    !typeof(ScriptableObject).IsAssignableFrom(type))
+                {
+                    int inspected = 0;
+                    foreach (FieldInfo field in fields)
+                    {
+                        if (!field.IsStatic || !HasToken(field.Name,
+                            "instance", "daily", "quest", "mission", "progress",
+                            "active", "current", "player") ||
+                            HasToken(field.Name, "database", "definition", "template"))
+                            continue;
+                        object value = SafeGet(field, null);
+                        if (value == null) continue;
+                        output.AppendLine("  STATIC STATE " + field.Name);
+                        DumpObject(output, "  " + type.Name + "." + field.Name,
+                            value, 0, new HashSet<object>(ReferenceComparer.Instance), 0);
+                        if (++inspected >= 4 || output.Length >= Limit) break;
+                    }
+                }
                 output.AppendLine();
             }
         }
