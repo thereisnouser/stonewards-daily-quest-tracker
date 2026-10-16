@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.1.2";
+        public const string Version = "0.2.0";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
@@ -29,7 +29,6 @@ namespace StonewardsDailyQuestTracker
         private ConfigEntry<float> _refresh;
         private ConfigEntry<Key> _toggleKey;
         private ConfigEntry<Key> _diagnosticKey;
-        private ConfigEntry<bool> _autoDiagnostic;
         private DailyQuestReader _reader;
         private QuestHud _hud;
         private List<QuestView> _quests = new List<QuestView>();
@@ -37,9 +36,6 @@ namespace StonewardsDailyQuestTracker
         private float _nextError;
         private bool _visible = true;
         private bool _wasConnected;
-        private bool _missionWasOpen;
-        private bool _autoCaptured;
-        private float _autoCaptureAfter;
         private float _lastDiagnosticTime = -100f;
         private float _statusUntil;
         private string _diagnosticStatus = "";
@@ -57,7 +53,7 @@ namespace StonewardsDailyQuestTracker
             _hideCompleted = Config.Bind("General", "HideCompleted", false, "Hide completed daily quests.");
             _showBars = Config.Bind("Appearance", "ShowProgressBars", true, "Draw a small progress bar below each objective.");
             _showMissingDataNotice = Config.Bind("General", "ShowMissingQuestData", true,
-                "Show a compact warning when the active quest data has not been recognized.");
+                "Show a compact warning if the game has not initialized active daily quests.");
             _corner = Config.Bind("Appearance", "Anchor", PanelCorner.TopRight, "Panel screen corner.");
             _xOffset = Config.Bind("Appearance", "HorizontalOffset", 18, "Horizontal edge inset in actual pixels.");
             _yOffset = Config.Bind("Appearance", "VerticalOffset", 240,
@@ -72,11 +68,9 @@ namespace StonewardsDailyQuestTracker
             _diagnosticKey = Config.Bind("Hotkeys", "DumpQuestDiagnostics", Key.F9,
                 "Write quest-system field names to BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt.");
 
-            _autoDiagnostic = Config.Bind("Diagnostics", "AutoCaptureWhenMissionsOpened", true,
-                "Export a one-shot quest API report on first opening Missions. No hotkey needed.");
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
-            Logger.LogInfo("Daily Quest Tracker loaded (F6: panel, F9: quest diagnostics). Progress is read only from game state.");
+            Logger.LogInfo("Daily Quest Tracker v0.2.0 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -94,9 +88,6 @@ namespace StonewardsDailyQuestTracker
             if (_reader != null) _reader.ResetSession();
             _quests.Clear();
             _nextUpdate = 0f;
-            _missionWasOpen = false;
-            _autoCaptured = false;
-            _autoCaptureAfter = 0f;
         }
 
         private void TryExportDiagnostics(string trigger)
@@ -130,26 +121,6 @@ namespace StonewardsDailyQuestTracker
                         TryExportDiagnostics("F9 hotkey");
                 }
 
-                // Capture after the game has populated its Daily tab. This is
-                // a one-time action, not a recurring scan of game objects.
-                var menu = GlobalMissionMenu.Instance;
-                bool missionOpen = menu != null && menu.IsOpen;
-                if (missionOpen && !_missionWasOpen && !_autoCaptured)
-                {
-                    // Give UI Toolkit time to populate the Daily tab before
-                    // inspecting its labels and progress bars.
-                    _autoCaptureAfter = Time.unscaledTime + .65f;
-                    _reader.ResetSession();
-                    _nextUpdate = 0f;
-                }
-                if (missionOpen && !_autoCaptured && _autoDiagnostic.Value &&
-                    Time.unscaledTime >= _autoCaptureAfter)
-                {
-                    _autoCaptured = true;
-                    TryExportDiagnostics("Missions Daily UI automatic capture");
-                }
-                _missionWasOpen = missionOpen;
-
                 bool connected = NetworkClient.active;
                 if (!connected)
                 {
@@ -170,7 +141,8 @@ namespace StonewardsDailyQuestTracker
                 if (Time.unscaledTime < _nextUpdate)
                     return;
                 _nextUpdate = Time.unscaledTime + _refresh.Value;
-                // Read even while a menu is open, so the tracker can pick up quest refreshes.
+                // Cheap, direct reads of only selected DAILY runtime missions.
+                // The game can reset/replace quest objects at any time.
                 _quests = _reader.ReadDailyQuests();
             }
             catch (Exception ex)
