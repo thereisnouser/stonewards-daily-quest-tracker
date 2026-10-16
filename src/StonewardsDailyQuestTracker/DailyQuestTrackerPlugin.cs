@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.1.1";
+        public const string Version = "0.1.2";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<CompletedQuestMode> _completedQuestMode;
@@ -28,6 +28,7 @@ namespace StonewardsDailyQuestTracker
         private ConfigEntry<float> _readabilityScale;
         private ConfigEntry<bool> _autoScaleToResolution;
         private ConfigEntry<bool> _anchorToCurrencyHud;
+        private ConfigEntry<bool> _renderBehindGameUi;
         private ConfigEntry<int> _currencyGap;
         private ConfigEntry<float> _refresh;
         private ConfigEntry<Key> _toggleKey;
@@ -35,6 +36,7 @@ namespace StonewardsDailyQuestTracker
         private DailyQuestReader _reader;
         private QuestHud _hud;
         private CurrencyHudAnchor _currencyAnchor;
+        private NativeHudLayer _nativeHudLayer;
         private List<QuestView> _quests = new List<QuestView>();
         private float _nextUpdate;
         private float _nextError;
@@ -79,6 +81,9 @@ namespace StonewardsDailyQuestTracker
             _currencyGap = Config.Bind("Appearance", "CurrencyGap", 10,
                 new ConfigDescription("Gap below the coin HUD in physical screen pixels.",
                     new AcceptableValueRange<int>(0, 50)));
+            _renderBehindGameUi = Config.Bind("Appearance", "RenderBehindGameUI", true,
+                "Draw the quest HUD inside the game's native UI Toolkit panel, beneath notifications. " +
+                "Set false to restore the original OnGUI rendering if needed.");
             _refresh = Config.Bind("General", "RefreshSeconds", 1.25f,
                 new ConfigDescription("How often to read actual quest progress (unscaled seconds).",
                     new AcceptableValueRange<float>(0.3f, 5f)));
@@ -89,7 +94,8 @@ namespace StonewardsDailyQuestTracker
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
-            Logger.LogInfo("Daily Quest Tracker v0.1.1 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            _nativeHudLayer = new NativeHudLayer(DrawHudOnNativePanel, Logger);
+            Logger.LogInfo("Daily Quest Tracker v0.1.2 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -100,12 +106,14 @@ namespace StonewardsDailyQuestTracker
         private void OnDisable()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (_nativeHudLayer != null) _nativeHudLayer.Detach();
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (_reader != null) _reader.ResetSession();
             if (_currencyAnchor != null) _currencyAnchor.Reset();
+            if (_nativeHudLayer != null) _nativeHudLayer.Detach();
             _quests.Clear();
             _nextUpdate = 0f;
         }
@@ -151,6 +159,7 @@ namespace StonewardsDailyQuestTracker
                         _quests.Clear();
                     }
                     _wasConnected = false;
+                    _nativeHudLayer.Detach();
                     return;
                 }
                 if (!_wasConnected)
@@ -160,9 +169,19 @@ namespace StonewardsDailyQuestTracker
                     _wasConnected = true;
                     _nextUpdate = 0f;
                 }
-                if (_anchorToCurrencyHud.Value &&
-                    _corner.Value == PanelCorner.TopRight)
+                // The layer needs the game's UI Toolkit panel. Currency
+                // discovery is also the bounded way to find that panel.
+                if ((_anchorToCurrencyHud.Value && _corner.Value == PanelCorner.TopRight) ||
+                    _renderBehindGameUi.Value)
                     _currencyAnchor.RefreshIfNeeded();
+
+                VisualElement panelRoot;
+                if (_renderBehindGameUi.Value &&
+                    _currencyAnchor.TryGetPanelRoot(out panelRoot))
+                    _nativeHudLayer.Attach(panelRoot);
+                else
+                    _nativeHudLayer.Detach();
+
                 if (Time.unscaledTime < _nextUpdate)
                     return;
                 _nextUpdate = Time.unscaledTime + _refresh.Value;
@@ -201,9 +220,26 @@ namespace StonewardsDailyQuestTracker
                 GUI.color = previous;
             }
 
+            // The native container renders underneath other UI Toolkit
+            // elements, including notifications. Never draw twice.
+            if (!_nativeHudLayer.Attached)
+                DrawHud(1f, 1f);
+        }
+
+        private void DrawHudOnNativePanel()
+        {
+            if (Event.current == null || Event.current.type != EventType.Repaint)
+                return;
+            if (!_nativeHudLayer.Attached)
+                return;
+            DrawHud(_nativeHudLayer.UnitsPerPixelX,
+                _nativeHudLayer.UnitsPerPixelY);
+        }
+
+        private void DrawHud(float unitsPerPixelX, float unitsPerPixelY)
+        {
             if (!_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
                 return;
-
             if (_quests.Count == 0 && !_showMissingDataNotice.Value)
                 return;
 
@@ -214,7 +250,8 @@ namespace StonewardsDailyQuestTracker
             _hud.Draw(_quests, _corner.Value, _xOffset.Value, _yOffset.Value,
                 _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
                 _completedQuestMode.Value, _showMissingDataNotice.Value,
-                currencyBounds, _currencyGap.Value);
+                currencyBounds, _currencyGap.Value,
+                unitsPerPixelX, unitsPerPixelY);
         }
 
         private static bool IsBlocked()

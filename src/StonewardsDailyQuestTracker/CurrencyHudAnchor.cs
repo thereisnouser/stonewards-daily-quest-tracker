@@ -71,6 +71,18 @@ namespace StonewardsDailyQuestTracker
             Discover();
         }
 
+        // Expose the already-discovered game panel without any additional
+        // UIDocument traversal. The tracker can render behind native notices.
+        public bool TryGetPanelRoot(out VisualElement root)
+        {
+            root = null;
+            if (_currencyLabel == null || _currencyLabel.panel == null)
+                return false;
+            root = _currencyLabel.panel.visualTree;
+            return root != null && root.panel != null &&
+                   root.worldBound.width > 1f && root.worldBound.height > 1f;
+        }
+
         public bool TryGetBadgeBounds(out Rect bounds)
         {
             bounds = default(Rect);

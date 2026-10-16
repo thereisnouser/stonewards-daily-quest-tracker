@@ -48,7 +48,8 @@ namespace StonewardsDailyQuestTracker
             int horizontalInset, int verticalInset, float requestedScale,
             float readabilityScale, bool autoScaleToResolution,
             CompletedQuestMode completedMode, bool showStatus,
-            Rect? currencyBadge, int currencyGap)
+            Rect? currencyBadge, int currencyGap,
+            float unitsPerPixelX = 1f, float unitsPerPixelY = 1f)
         {
             if (_heading == null) InitializeStyles();
 
@@ -135,8 +136,14 @@ namespace StonewardsDailyQuestTracker
             Color guiColor = GUI.color;
             try
             {
-                GUI.matrix = Matrix4x4.TRS(new Vector3(x, y, 0f),
-                    Quaternion.identity, new Vector3(factor, factor, 1f));
+                // OnGUI is in screen pixels. UI Toolkit's IMGUIContainer
+                // works in panel units, so compensate for PanelSettings scaling.
+                // Multiply rather than replace the existing container matrix.
+                GUI.matrix = matrix * Matrix4x4.TRS(
+                    new Vector3(x * unitsPerPixelX, y * unitsPerPixelY, 0f),
+                    Quaternion.identity,
+                    new Vector3(factor * unitsPerPixelX,
+                        factor * unitsPerPixelY, 1f));
                 DrawBackground(height);
                 GUI.Label(new Rect(13, 3, Width - 132, 26), "DAILY QUESTS", _heading);
                 GUI.Label(new Rect(Width - 120, 3, 105, 26),

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (testing)
+
+- Render the daily quest panel behind the game's native UI Toolkit overlays so notifications can appear on top.
+- Add `Appearance.RenderBehindGameUI` (enabled by default) with an option to return to legacy OnGUI rendering.
+
 ## 0.1.1
 
 - Fixed the Thunderstore description by removing the oversized duplicate preview image.

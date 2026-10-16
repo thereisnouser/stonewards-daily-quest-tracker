@@ -11,7 +11,7 @@
 [![Stonewards](https://img.shields.io/badge/Game-Stonewards-7e3740)](https://thunderstore.io/c/stonewards/)
 [![BepInEx 5](https://img.shields.io/badge/Loader-BepInEx%205-233952)](https://thunderstore.io/c/stonewards/p/BepInEx/BepInExPack/)
 [![Thunderstore](https://img.shields.io/badge/Thunderstore-DailyQuestTracker-d3ad65)](https://thunderstore.io/c/stonewards/)
-![Version](https://img.shields.io/badge/Version-0.1.1-d2b471)
+![Version](https://img.shields.io/badge/Version-0.1.2-d2b471)
 
 ## Why use it?
 
@@ -65,6 +65,7 @@ Edit `BepInEx/config/community.stonewards.dailyquesttracker.cfg` in your selecte
 | --- | --- | --- |
 | `General.CompletedQuestMode` | `Hide` | `Hide` completed objectives or `Mark` them with a check |
 | `Appearance.AnchorToCurrencyHud` | `true` | Place below the in-game currency panel if detected |
+| `Appearance.RenderBehindGameUI` | `true` | Render below native game UI and notifications; disable to use legacy OnGUI |
 | `Appearance.CurrencyGap` | `10` | Spacing below the currency panel in pixels |
 | `Appearance.Anchor` | `TopRight` | Screen corner when using manual positioning |
 | `Appearance.HorizontalOffset` | `18` | Manual horizontal edge inset, in pixels |
