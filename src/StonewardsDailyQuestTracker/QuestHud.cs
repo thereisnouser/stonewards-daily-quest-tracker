@@ -45,7 +45,8 @@ namespace StonewardsDailyQuestTracker
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
             float readabilityScale, bool autoScaleToResolution,
-            bool hideCompleted, bool showStatus)
+            bool hideCompleted, bool showStatus,
+            Rect? currencyBadge, int currencyGap)
         {
             if (_heading == null) InitializeStyles();
 
@@ -80,11 +81,24 @@ namespace StonewardsDailyQuestTracker
             factor = Mathf.Min(factor, (Screen.width - EdgeMargin * 2f) / Width,
                 (Screen.height - EdgeMargin * 2f) / height);
 
-            if (autoScaleToResolution)
+            bool followCurrency = anchor == PanelCorner.TopRight &&
+                currencyBadge.HasValue && currencyBadge.Value.yMax >= 0f &&
+                currencyBadge.Value.yMax < Screen.height - 60f;
+            float badgeBottom = followCurrency ? currencyBadge.Value.yMax : 0f;
+            float gap = Mathf.Max(0, currencyGap);
+            if (followCurrency)
             {
-                // Respect the requested top/bottom reserved space when it fits.
-                // For an impossible offset (e.g. 1000 px on a 720 px screen),
-                // let the later position clamp win instead of collapsing the HUD.
+                // Fit entirely below the currency badge rather than using an
+                // arbitrary top-edge offset. UI is allowed to change at runtime.
+                float below = Screen.height - EdgeMargin - badgeBottom - gap;
+                if (below >= 48f)
+                    factor = Mathf.Min(factor, below / height);
+                else
+                    followCurrency = false;
+            }
+            if (autoScaleToResolution && !followCurrency)
+            {
+                // Manual inset is a fallback when no currency HUD was found.
                 float usableHeight = Screen.height -
                     Mathf.Max(EdgeMargin, verticalInset) - EdgeMargin;
                 if (usableHeight >= 72f)
@@ -101,6 +115,13 @@ namespace StonewardsDailyQuestTracker
                 Mathf.Max(EdgeMargin, horizontalInset);
             float y = bottom ? Screen.height - Mathf.Max(EdgeMargin, verticalInset) - panelHeight :
                 Mathf.Max(EdgeMargin, verticalInset);
+            if (followCurrency)
+            {
+                // Align the panel's right edge with the native currency badge,
+                // and leave a configurable pixel gap directly below it.
+                x = currencyBadge.Value.xMax - panelWidth;
+                y = badgeBottom + gap;
+            }
             // Apply physical-pixel bounds after scaling. This keeps all four
             // anchors visible even on non-16:9 and very small screens.
             x = Mathf.Clamp(x, EdgeMargin, Screen.width - panelWidth - EdgeMargin);
