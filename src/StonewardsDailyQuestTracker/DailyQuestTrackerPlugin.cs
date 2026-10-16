@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.2.2";
+        public const string Version = "0.2.3";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
@@ -27,11 +27,14 @@ namespace StonewardsDailyQuestTracker
         private ConfigEntry<float> _scale;
         private ConfigEntry<float> _readabilityScale;
         private ConfigEntry<bool> _autoScaleToResolution;
+        private ConfigEntry<bool> _anchorToCurrencyHud;
+        private ConfigEntry<int> _currencyGap;
         private ConfigEntry<float> _refresh;
         private ConfigEntry<Key> _toggleKey;
         private ConfigEntry<Key> _diagnosticKey;
         private DailyQuestReader _reader;
         private QuestHud _hud;
+        private CurrencyHudAnchor _currencyAnchor;
         private List<QuestView> _quests = new List<QuestView>();
         private float _nextUpdate;
         private float _nextError;
@@ -67,6 +70,12 @@ namespace StonewardsDailyQuestTracker
             _autoScaleToResolution = Config.Bind("Appearance", "AutoScaleToResolution", true,
                 "Maintain the same HUD-to-screen proportions using 1920x1080 as a reference. " +
                 "Disable for a fixed physical-pixel panel size.");
+            _anchorToCurrencyHud = Config.Bind("Appearance", "AnchorToCurrencyHud", true,
+                "When Anchor is TopRight, place the panel below the live coin HUD position. " +
+                "Falls back to manual offsets if the native currency badge is not found.");
+            _currencyGap = Config.Bind("Appearance", "CurrencyGap", 10,
+                new ConfigDescription("Gap below the coin HUD in physical screen pixels.",
+                    new AcceptableValueRange<int>(0, 50)));
             _refresh = Config.Bind("General", "RefreshSeconds", 1.25f,
                 new ConfigDescription("How often to read actual quest progress (unscaled seconds).",
                     new AcceptableValueRange<float>(0.3f, 5f)));
@@ -76,7 +85,8 @@ namespace StonewardsDailyQuestTracker
 
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
-            Logger.LogInfo("Daily Quest Tracker v0.2.2 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            _currencyAnchor = new CurrencyHudAnchor(Logger);
+            Logger.LogInfo("Daily Quest Tracker v0.2.3 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -92,6 +102,7 @@ namespace StonewardsDailyQuestTracker
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (_reader != null) _reader.ResetSession();
+            if (_currencyAnchor != null) _currencyAnchor.Reset();
             _quests.Clear();
             _nextUpdate = 0f;
         }
@@ -133,6 +144,7 @@ namespace StonewardsDailyQuestTracker
                     if (_wasConnected)
                     {
                         _reader.ResetSession();
+                        _currencyAnchor.Reset();
                         _quests.Clear();
                     }
                     _wasConnected = false;
@@ -141,9 +153,13 @@ namespace StonewardsDailyQuestTracker
                 if (!_wasConnected)
                 {
                     _reader.ResetSession();
+                    _currencyAnchor.Reset();
                     _wasConnected = true;
                     _nextUpdate = 0f;
                 }
+                if (_anchorToCurrencyHud.Value &&
+                    _corner.Value == PanelCorner.TopRight)
+                    _currencyAnchor.RefreshIfNeeded();
                 if (Time.unscaledTime < _nextUpdate)
                     return;
                 _nextUpdate = Time.unscaledTime + _refresh.Value;
@@ -188,9 +204,14 @@ namespace StonewardsDailyQuestTracker
             if (_quests.Count == 0 && !_showMissingDataNotice.Value)
                 return;
 
+            Rect badge;
+            Rect? currencyBounds =
+                _anchorToCurrencyHud.Value && _corner.Value == PanelCorner.TopRight &&
+                _currencyAnchor.TryGetBadgeBounds(out badge) ? (Rect?)badge : null;
             _hud.Draw(_quests, _corner.Value, _xOffset.Value, _yOffset.Value,
                 _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
-                _hideCompleted.Value, _showMissingDataNotice.Value);
+                _hideCompleted.Value, _showMissingDataNotice.Value,
+                currencyBounds, _currencyGap.Value);
         }
 
         private static bool IsBlocked()
