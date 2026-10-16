@@ -5,3 +5,6 @@
 *.user
 *.log
 *diagnostic.txt
+
+# Generated Thunderstore archives
+dist/
