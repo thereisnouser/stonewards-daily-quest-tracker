@@ -23,11 +23,29 @@ namespace StonewardsDailyQuestTracker
     {
         private const BindingFlags MemberFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
         private const int MaxDepth = 5;
-        private const int MaxNodes = 1500;
+        private const int MaxNodes = 700;
         private readonly ManualLogSource _log;
         private readonly Type[] _questTypes;
         private readonly Dictionary<Type, MemberInfo[]> _members = new Dictionary<Type, MemberInfo[]>();
         private bool _reportedDiscovery;
+        private bool _discovered;
+        private readonly List<LiveSource> _sources = new List<LiveSource>();
+        private readonly List<QuestView> _empty = new List<QuestView>(0);
+        private sealed class LiveSource
+        {
+            public MemberInfo Member;
+            public Component Instance;
+            public string Path;
+            public bool Daily;
+            public object Read() => Instance != null ? (object)Instance : GetValue(Member, null);
+        }
+        public void ResetSession()
+        {
+            _discovered = false;
+            _sources.Clear();
+            _reportedDiscovery = false;
+        }
+
 
         public DailyQuestReader(ManualLogSource log)
         {
@@ -46,59 +64,90 @@ namespace StonewardsDailyQuestTracker
 
         public List<QuestView> ReadDailyQuests()
         {
-            var collected = new Dictionary<string, QuestView>(StringComparer.OrdinalIgnoreCase);
+            if (!_discovered) DiscoverSources();
+            if (_sources.Count == 0) return _empty;
+            var result = new Dictionary<string, QuestView>(StringComparer.OrdinalIgnoreCase);
+            int budget = 200;
+            foreach (LiveSource source in _sources)
+            {
+                object root = source.Read();
+                if (root == null) continue;
+                Walk(root, source.Path, source.Daily, 0,
+                    new HashSet<object>(ReferenceComparer.Instance), result, ref budget);
+                if (budget <= 0) break;
+            }
+            return result.Values.OrderBy(v => v.Completed).ThenBy(v => v.Title).ToList();
+        }
+
+        private void DiscoverSources()
+        {
+            // Expensive reflection and FindObjectsOfTypeAll run only once per
+            // connected session. Subsequent reads use only validated roots.
+            _discovered = true;
             int budget = MaxNodes;
-            // Start from strongly relevant static singleton/state roots, not arbitrary
-            // scene objects. This avoids accidentally treating unrelated HUD elements
-            // as quest model data.
             foreach (Type type in _questTypes)
             {
-                if (!IsRootType(type)) continue;
+                if (!IsRootType(type) || IsDefinitionType(type)) continue;
                 foreach (MemberInfo member in Members(type))
                 {
-                    if (!IsStatic(member) || !IsStateMember(member.Name)) continue;
-                    object value = GetValue(member, null);
-                    if (value == null) continue;
-                    var visited = new HashSet<object>(ReferenceComparer.Instance);
-                    Walk(value, type.Name + "." + member.Name,
-                        Contains(type.Name, "daily") || Contains(member.Name, "daily"),
-                        0, visited, collected, ref budget);
-                    if (budget <= 0) break;
+                    if (!IsStatic(member) || !IsStateMember(member.Name) ||
+                        IsDefinitionName(member.Name) || IsDefinitionType(MemberType(member)))
+                        continue;
+                    object root = GetValue(member, null);
+                    if (root == null) continue;
+                    bool daily = Contains(type.Name, "daily") || Contains(member.Name, "daily");
+                    var probe = new Dictionary<string, QuestView>(StringComparer.OrdinalIgnoreCase);
+                    Walk(root, type.Name + "." + member.Name, daily, 0,
+                        new HashSet<object>(ReferenceComparer.Instance), probe, ref budget);
+                    if (probe.Count > 0)
+                        _sources.Add(new LiveSource { Member = member,
+                            Path = type.Name + "." + member.Name, Daily = daily });
+                    if (budget <= 0 || _sources.Count >= 8) break;
                 }
-                if (budget <= 0) break;
-
-                // Some managers do not expose a singleton. Read live scene
-                // components by type; do not instantiate or alter game objects.
+                if (budget <= 0 || _sources.Count >= 8) break;
                 if (!typeof(Component).IsAssignableFrom(type) ||
                     !(Contains(type.Name, "manager") || Contains(type.Name, "controller") ||
-                      Contains(type.Name, "menu") || Contains(type.Name, "system") ||
-                      Contains(type.Name, "tracker"))) continue;
+                      Contains(type.Name, "system") || Contains(type.Name, "tracker")))
+                    continue;
                 UnityEngine.Object[] instances;
                 try { instances = Resources.FindObjectsOfTypeAll(type); }
                 catch { continue; }
-                int taken = 0;
-                foreach (var obj in instances)
+                int checkedCount = 0;
+                foreach (UnityEngine.Object instance in instances)
                 {
-                    if (obj == null || ++taken > 5) break;
-                    var component = obj as Component;
+                    var component = instance as Component;
                     if (component == null || !component.gameObject.scene.IsValid()) continue;
-                    var visited = new HashSet<object>(ReferenceComparer.Instance);
-                    Walk(obj, type.Name + "[scene]", Contains(type.Name, "daily"),
-                        0, visited, collected, ref budget);
-                    if (budget <= 0) break;
+                    if (++checkedCount > 3) break;
+                    var probe = new Dictionary<string, QuestView>(StringComparer.OrdinalIgnoreCase);
+                    bool daily = Contains(type.Name, "daily");
+                    Walk(component, type.Name + "[scene]", daily, 0,
+                        new HashSet<object>(ReferenceComparer.Instance), probe, ref budget);
+                    if (probe.Count > 0)
+                        _sources.Add(new LiveSource { Instance = component,
+                            Path = type.Name + "[scene]", Daily = daily });
+                    if (budget <= 0 || _sources.Count >= 8) break;
                 }
-                if (budget <= 0) break;
+                if (budget <= 0 || _sources.Count >= 8) break;
             }
-
-            var result = collected.Values.OrderBy(v => v.Completed).ThenBy(v => v.Title).ToList();
-            if (result.Count == 0 && !_reportedDiscovery)
+            _log.LogInfo("Daily quest discovery: " + _sources.Count +
+                " live sources cached. No scene-wide searches during refresh.");
+            if (_sources.Count == 0 && !_reportedDiscovery)
             {
                 _reportedDiscovery = true;
-                _log.LogWarning("No daily quest models recognized yet. Join a run and press F9 to export the game's actual Quest/Mission API. " +
-                    "No progress is fabricated by this mod.");
+                _log.LogWarning("No verified live daily quest counters found. " +
+                    "Definitions are hidden. Press F9 to export quest API diagnostics.");
             }
-            return result;
         }
+
+        private static bool IsDefinitionName(string name) =>
+            Contains(name, "database") || Contains(name, "definition") ||
+            Contains(name, "catalog") || Contains(name, "template") ||
+            Contains(name, "prefab") || Contains(name, "asset");
+
+        private static bool IsDefinitionType(Type type) =>
+            type != null && (typeof(ScriptableObject).IsAssignableFrom(type) ||
+                IsDefinitionName(type.Name) ||
+                type.Name.EndsWith("SO", StringComparison.OrdinalIgnoreCase));
 
         private static bool HasDailyState(Type type)
         {
@@ -127,6 +176,7 @@ namespace StonewardsDailyQuestTracker
         {
             if (value == null || depth > MaxDepth || --budget < 0) return;
             Type type = value.GetType();
+            if (IsDefinitionType(type)) return;
             if (type == typeof(string) || type.IsPrimitive || type.IsEnum || type == typeof(decimal)) return;
             if (type.IsValueType && !Contains(type.FullName, "Mission") && !Contains(type.FullName, "Quest")) return;
             if (!type.IsValueType && !visited.Add(value)) return;
@@ -192,6 +242,7 @@ namespace StonewardsDailyQuestTracker
         {
             if (!isDaily) return null;
             Type type = value.GetType();
+            if (IsDefinitionType(type)) return null;
             string typeName = type.Name;
             // A daily collection may contain Mission/Quest instances, and some
             // games store quest progress as a class with an Objective suffix.
@@ -227,8 +278,21 @@ namespace StonewardsDailyQuestTracker
             if (target.HasValue && target.Value > 0 && progress.HasValue && progress.Value >= target.Value)
                 completed = true;
 
+            // Never display quest definitions (the 37 database templates shown
+            // by v0.1.0); only live current / required counters qualify.
+            if (!progress.HasValue || !target.HasValue || target.Value <= 0)
+                return null;
+            if (title.StartsWith("DAILY_", StringComparison.OrdinalIgnoreCase))
+                title = HumanizeKey(title);
             string id = AsText(Named(value, "Id", "ID", "QuestId", "MissionId", "MissionID", "QuestID"));
             return new QuestView { Id = id, Title = title, Progress = progress, Target = target, Completed = completed };
+        }
+
+        private static string HumanizeKey(string key)
+        {
+            string[] pieces = key.Substring(6).Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
+            string label = string.Join(" ", pieces).ToLowerInvariant();
+            return label.Length == 0 ? key : char.ToUpperInvariant(label[0]) + label.Substring(1);
         }
 
         private MemberInfo[] Members(Type t)
