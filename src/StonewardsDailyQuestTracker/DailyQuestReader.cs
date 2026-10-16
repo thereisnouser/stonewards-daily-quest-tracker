@@ -19,32 +19,39 @@ namespace StonewardsDailyQuestTracker
         private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic |
                                            BindingFlags.Instance | BindingFlags.Static;
 
+        private static readonly Assembly GameAssembly = typeof(FirstPersonController).Assembly;
+        private static readonly Type ManagerType = GameAssembly.GetType("QuestManager");
+        private static readonly Type MissionType = GameAssembly.GetType("RuntimeMission");
+        private static readonly Type QuestType = GameAssembly.GetType("QuestSO");
+
         private static readonly FieldInfo ManagerInstance =
-            typeof(QuestManager).GetField("Instance", Flags);
+            ManagerType?.GetField("Instance", Flags);
         private static readonly PropertyInfo SelectedDaily =
-            typeof(QuestManager).GetProperty("CurrentDailyQuests", Flags);
+            ManagerType?.GetProperty("CurrentDailyQuests", Flags);
         private static readonly FieldInfo RuntimeMissions =
-            typeof(QuestManager).GetField("runtimeMissions", Flags);
+            ManagerType?.GetField("runtimeMissions", Flags);
         private static readonly MethodInfo IsQuestCompleted =
-            typeof(QuestManager).GetMethod("IsQuestCompleted", Flags, null,
-                new[] { typeof(QuestSO) }, null);
+            ManagerType != null && QuestType != null
+                ? ManagerType.GetMethod("IsQuestCompleted", Flags, null,
+                    new[] { QuestType }, null)
+                : null;
 
         private static readonly FieldInfo MissionQuest =
-            typeof(RuntimeMission).GetField("QuestSO", Flags);
+            MissionType?.GetField("QuestSO", Flags);
         private static readonly FieldInfo MissionTypeField =
-            typeof(RuntimeMission).GetField("missionType", Flags);
+            MissionType?.GetField("missionType", Flags);
         private static readonly FieldInfo MissionCurrent =
-            typeof(RuntimeMission).GetField("currentValue", Flags);
+            MissionType?.GetField("currentValue", Flags);
         private static readonly FieldInfo MissionTarget =
-            typeof(RuntimeMission).GetField("target", Flags);
+            MissionType?.GetField("target", Flags);
         private static readonly FieldInfo MissionReached =
-            typeof(RuntimeMission).GetField("targetAlreadyReached", Flags);
+            MissionType?.GetField("targetAlreadyReached", Flags);
         private static readonly PropertyInfo MissionDescription =
-            typeof(RuntimeMission).GetProperty("Description", Flags);
+            MissionType?.GetProperty("Description", Flags);
         private static readonly PropertyInfo MissionTitle =
-            typeof(RuntimeMission).GetProperty("Title", Flags);
+            MissionType?.GetProperty("Title", Flags);
         private static readonly FieldInfo QuestId =
-            typeof(QuestSO).GetField("ID", Flags);
+            QuestType?.GetField("ID", Flags);
 
         private readonly ManualLogSource _log;
         private bool _reported;
@@ -134,11 +141,11 @@ namespace StonewardsDailyQuestTracker
                     float.IsNaN(currentValue) || float.IsNaN(targetValue) ||
                     targetValue <= 0f) continue;
 
-                var questAsset = quest as QuestSO;
                 bool reached = Get(MissionReached, match) is bool hit && hit;
                 bool gameCompleted = false;
-                if (questAsset != null && IsQuestCompleted != null)
-                    gameCompleted = GetCompleted(manager, questAsset);
+                if (QuestType != null && QuestType.IsInstanceOfType(quest) &&
+                    IsQuestCompleted != null)
+                    gameCompleted = GetCompleted(manager, quest);
                 bool completed = gameCompleted || reached || currentValue >= targetValue;
 
                 // These getters use the game's actual localized quest strings.
@@ -167,7 +174,7 @@ namespace StonewardsDailyQuestTracker
             return result;
         }
 
-        private bool GetCompleted(object manager, QuestSO quest)
+        private bool GetCompleted(object manager, object quest)
         {
             try
             {
