@@ -64,6 +64,11 @@ if ($NoInstall -or -not $profile) {
 $pluginPath = Join-Path $bep 'plugins\StonewardsDailyQuestTracker'
 New-Item -ItemType Directory -Force -Path $pluginPath | Out-Null
 $destination = Join-Path $pluginPath 'StonewardsDailyQuestTracker.dll'
-Copy-Item -LiteralPath $dll -Destination $destination -Force
+try {
+    Copy-Item -LiteralPath $dll -Destination $destination -Force -ErrorAction Stop
+} catch {
+    $reason = $_.Exception.Message
+    throw "DLL installation failed: $destination. The file may be locked by Stonewards. Close the game, wait for Stonewards.exe to exit, and rerun this script. Original error: $reason"
+}
 Write-Host "Installed into test profile: $destination" -ForegroundColor Green
 Write-Host 'Run the game via that r2modman profile. F6 = toggle HUD; F9 = quest API report.' -ForegroundColor Cyan
