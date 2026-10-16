@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.1.1";
+        public const string Version = "0.1.2";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
@@ -29,6 +29,7 @@ namespace StonewardsDailyQuestTracker
         private ConfigEntry<float> _refresh;
         private ConfigEntry<Key> _toggleKey;
         private ConfigEntry<Key> _diagnosticKey;
+        private ConfigEntry<bool> _autoDiagnostic;
         private DailyQuestReader _reader;
         private QuestHud _hud;
         private List<QuestView> _quests = new List<QuestView>();
@@ -36,6 +37,11 @@ namespace StonewardsDailyQuestTracker
         private float _nextError;
         private bool _visible = true;
         private bool _wasConnected;
+        private bool _missionWasOpen;
+        private bool _autoCaptured;
+        private float _lastDiagnosticTime = -100f;
+        private float _statusUntil;
+        private string _diagnosticStatus = "";
 
         private static readonly FieldInfo InventoryRoot =
             typeof(InventoryScreen).GetField("inventoryScreen", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -65,6 +71,8 @@ namespace StonewardsDailyQuestTracker
             _diagnosticKey = Config.Bind("Hotkeys", "DumpQuestDiagnostics", Key.F9,
                 "Write quest-system field names to BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt.");
 
+            _autoDiagnostic = Config.Bind("Diagnostics", "AutoCaptureWhenMissionsOpened", true,
+                "Export a one-shot quest API report on first opening Missions. No hotkey needed.");
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             Logger.LogInfo("Daily Quest Tracker loaded (F6: panel, F9: quest diagnostics). Progress is read only from game state.");
@@ -85,6 +93,26 @@ namespace StonewardsDailyQuestTracker
             if (_reader != null) _reader.ResetSession();
             _quests.Clear();
             _nextUpdate = 0f;
+            _missionWasOpen = false;
+            _autoCaptured = false;
+        }
+
+        private void TryExportDiagnostics(string trigger)
+        {
+            if (Time.unscaledTime - _lastDiagnosticTime < .35f) return;
+            _lastDiagnosticTime = Time.unscaledTime;
+            try
+            {
+                string path = QuestDiagnostics.Export(trigger);
+                _diagnosticStatus = "QUEST DIAGNOSTICS SAVED - BepInEx/config";
+                Logger.LogInfo("Quest diagnostics written to: " + path);
+            }
+            catch (Exception ex)
+            {
+                _diagnosticStatus = "QUEST DIAGNOSTICS FAILED - CHECK LOG";
+                Logger.LogError("Quest diagnostic export failed: " + ex);
+            }
+            _statusUntil = Time.unscaledTime + 6f;
         }
 
         private void Update()
@@ -97,11 +125,19 @@ namespace StonewardsDailyQuestTracker
                     if (keyboard[_toggleKey.Value] != null && keyboard[_toggleKey.Value].wasPressedThisFrame)
                         _visible = !_visible;
                     if (keyboard[_diagnosticKey.Value] != null && keyboard[_diagnosticKey.Value].wasPressedThisFrame)
-                    {
-                        string path = _reader.DumpDiagnostics();
-                        Logger.LogInfo("Quest diagnostics written: " + path);
-                    }
+                        TryExportDiagnostics("F9 hotkey");
                 }
+
+                // Capture after the game has populated its Daily tab. This is
+                // a one-time action, not a recurring scan of game objects.
+                var menu = GlobalMissionMenu.Instance;
+                bool missionOpen = menu != null && menu.IsOpen;
+                if (missionOpen && !_missionWasOpen && !_autoCaptured && _autoDiagnostic.Value)
+                {
+                    _autoCaptured = true;
+                    TryExportDiagnostics("Missions opened automatically");
+                }
+                _missionWasOpen = missionOpen;
 
                 bool connected = NetworkClient.active;
                 if (!connected)
@@ -138,8 +174,26 @@ namespace StonewardsDailyQuestTracker
 
         private void OnGUI()
         {
-            if (Event.current == null || Event.current.type != EventType.Repaint ||
-                !_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
+            if (Event.current == null) return;
+            // F9 fallback if the Input System key event is swallowed by UI.
+            if (Event.current.type == EventType.KeyDown &&
+                _diagnosticKey.Value == Key.F9 &&
+                Event.current.keyCode == KeyCode.F9)
+                TryExportDiagnostics("F9 IMGUI fallback");
+
+            if (Event.current.type != EventType.Repaint) return;
+            if (Time.unscaledTime < _statusUntil)
+            {
+                var previous = GUI.color;
+                GUI.color = new Color(.08f, .10f, .14f, .93f);
+                GUI.DrawTexture(new Rect(18, Screen.height - 72, 448, 44),
+                    Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                GUI.Label(new Rect(29, Screen.height - 67, 423, 35), _diagnosticStatus);
+                GUI.color = previous;
+            }
+
+            if (!_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
                 return;
 
             if (_quests.Count == 0 && !_showMissingDataNotice.Value)
