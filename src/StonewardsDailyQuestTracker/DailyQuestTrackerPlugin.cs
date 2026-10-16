@@ -16,11 +16,10 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.2.1";
+        public const string Version = "0.2.2";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
-        private ConfigEntry<bool> _showBars;
         private ConfigEntry<bool> _showMissingDataNotice;
         private ConfigEntry<PanelCorner> _corner;
         private ConfigEntry<int> _xOffset;
@@ -53,7 +52,6 @@ namespace StonewardsDailyQuestTracker
         {
             _enabled = Config.Bind("General", "Enabled", true, "Enable Daily Quest Tracker.");
             _hideCompleted = Config.Bind("General", "HideCompleted", false, "Hide completed daily quests.");
-            _showBars = Config.Bind("Appearance", "ShowProgressBars", true, "Draw a small progress bar below each objective.");
             _showMissingDataNotice = Config.Bind("General", "ShowMissingQuestData", true,
                 "Show a compact warning if the game has not initialized active daily quests.");
             _corner = Config.Bind("Appearance", "Anchor", PanelCorner.TopRight, "Panel screen corner.");
@@ -78,7 +76,7 @@ namespace StonewardsDailyQuestTracker
 
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
-            Logger.LogInfo("Daily Quest Tracker v0.2.1 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            Logger.LogInfo("Daily Quest Tracker v0.2.2 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -192,7 +190,7 @@ namespace StonewardsDailyQuestTracker
 
             _hud.Draw(_quests, _corner.Value, _xOffset.Value, _yOffset.Value,
                 _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
-                _hideCompleted.Value, _showBars.Value, _showMissingDataNotice.Value);
+                _hideCompleted.Value, _showMissingDataNotice.Value);
         }
 
         private static bool IsBlocked()
