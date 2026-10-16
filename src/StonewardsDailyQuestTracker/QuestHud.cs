@@ -93,7 +93,7 @@ namespace StonewardsDailyQuestTracker
                         noSource ? "QUEST PROGRESS NOT DETECTED" : "ALL QUESTS COMPLETED",
                         _emptyTitle);
                     GUI.Label(new Rect(18, HeaderHeight + 40, Width - 36, 22),
-                        noSource ? "Press F9 to export quest diagnostics" :
+                        noSource ? "Open Missions / Daily for diagnostics" :
                             "Completed quests are hidden", _emptyInfo);
                     return;
                 }
