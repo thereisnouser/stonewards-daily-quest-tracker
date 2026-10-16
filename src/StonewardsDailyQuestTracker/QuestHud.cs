@@ -5,16 +5,16 @@ using UnityEngine;
 namespace StonewardsDailyQuestTracker
 {
     /// <summary>
-    /// Read-only, non-interactive in-game HUD. Stonewards/Party HUD colors,
-    /// stepped borders, generous typography and room for only active quests.
-    /// No runtime font searches or UI-object creation on each repaint.
+    /// Read-only, compact text HUD: one quest name and numeric progress per row.
+    /// Uses PartyHUD styling and resolution scaling without progress bars.
+    /// Game data is sampled elsewhere, never during rendering.
     /// </summary>
     internal sealed class QuestHud
     {
-        private const float Width = 338f;
-        private const float HeaderHeight = 44f;
-        private const float ItemHeight = 62f;
-        private const float FooterHeight = 20f;
+        private const float Width = 310f;
+        private const float HeaderHeight = 32f;
+        private const float ItemHeight = 30f;
+        private const float FooterHeight = 18f;
         private const int MaxVisible = 5;
         private const float ReferenceWidth = 1920f;
         private const float ReferenceHeight = 1080f;
@@ -30,8 +30,6 @@ namespace StonewardsDailyQuestTracker
         private static readonly Color SecondaryText = new Color(.76f, .76f, .73f, 1f);
         private static readonly Color Success = new Color(.47f, .87f, .56f, 1f);
         private static readonly Color RowDivider = new Color(.71f, .63f, .48f, .27f);
-        private static readonly Color Track = new Color(.12f, .15f, .19f, 1f);
-        private static readonly Color TrackBorder = new Color(.36f, .35f, .31f, .9f);
 
         private GUIStyle _heading;
         private GUIStyle _rowTitle;
@@ -40,13 +38,12 @@ namespace StonewardsDailyQuestTracker
         private GUIStyle _rowCounterDone;
         private GUIStyle _subtle;
         private GUIStyle _emptyTitle;
-        private GUIStyle _emptyInfo;
         private Font _font;
 
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
             float readabilityScale, bool autoScaleToResolution,
-            bool hideCompleted, bool showBars, bool showStatus)
+            bool hideCompleted, bool showStatus)
         {
             if (_heading == null) InitializeStyles();
 
@@ -61,7 +58,7 @@ namespace StonewardsDailyQuestTracker
             if (empty && quests.Count == 0 && !showStatus) return;
             int visible = Math.Min(matching, MaxVisible);
             int overflow = Math.Max(0, matching - visible);
-            float height = HeaderHeight + (empty ? 72f : visible * ItemHeight + 6f) +
+            float height = HeaderHeight + (empty ? 39f : visible * ItemHeight + 5f) +
                            (overflow > 0 ? FooterHeight : 0f);
 
             // Mirror PartyHUD: clamp preference before multiplying by the
@@ -114,19 +111,16 @@ namespace StonewardsDailyQuestTracker
                 GUI.matrix = Matrix4x4.TRS(new Vector3(x, y, 0f),
                     Quaternion.identity, new Vector3(factor, factor, 1f));
                 DrawBackground(height);
-                GUI.Label(new Rect(16, 5, Width - 128, 34), "DAILY QUESTS", _heading);
-                GUI.Label(new Rect(Width - 103, 7, 85, 30),
-                    empty ? "TRACKER" : matching + " QUESTS", _rowCounter);
+                GUI.Label(new Rect(13, 3, Width - 70, 26), "DAILY QUESTS", _heading);
+                GUI.Label(new Rect(Width - 55, 3, 40, 26),
+                    quests.Count.ToString(), _rowCounter);
 
                 if (empty)
                 {
                     bool noSource = quests.Count == 0;
-                    GUI.Label(new Rect(18, HeaderHeight + 11, Width - 36, 28),
+                    GUI.Label(new Rect(13, HeaderHeight + 5, Width - 26, 30),
                         noSource ? "QUEST PROGRESS NOT DETECTED" : "ALL QUESTS COMPLETED",
                         _emptyTitle);
-                    GUI.Label(new Rect(18, HeaderHeight + 40, Width - 36, 22),
-                        noSource ? "Open Missions / Daily for diagnostics" :
-                            "Completed quests are hidden", _emptyInfo);
                     return;
                 }
 
@@ -135,14 +129,13 @@ namespace StonewardsDailyQuestTracker
                 {
                     QuestView q = quests[i];
                     if (hideCompleted && q.Completed) continue;
-                    DrawRow(q, HeaderHeight + 4f + row * ItemHeight, showBars);
+                    DrawRow(q, HeaderHeight + 3f + row * ItemHeight);
                     row++;
                 }
                 if (overflow > 0)
                 {
-                    float footerY = HeaderHeight + 5f + visible * ItemHeight;
-                    DrawRect(15, footerY, Width - 30, 1, RowDivider);
-                    GUI.Label(new Rect(18, footerY + 2, Width - 36, 16),
+                    float footerY = HeaderHeight + 3f + visible * ItemHeight;
+                    GUI.Label(new Rect(13, footerY, Width - 26, FooterHeight - 2f),
                         "+ " + overflow + " MORE QUESTS", _subtle);
                 }
             }
@@ -162,33 +155,49 @@ namespace StonewardsDailyQuestTracker
             DrawRect(2, 7, Width - 4, HeaderHeight - 7, HeaderFill);
             DrawFrame(Width, height);
             DrawRect(2, HeaderHeight - 1, Width - 4, 1, GoldFrame);
-            DrawRect(10, HeaderHeight - 5, 65, 2, GoldText);
+            DrawRect(10, HeaderHeight - 4, 46, 1, GoldText);
         }
 
-        private void DrawRow(QuestView q, float y, bool showBar)
+        private void DrawRow(QuestView q, float y)
         {
-            DrawRect(13, y + 7, 3, 35, q.Completed ? Success : GoldText);
-            GUI.Label(new Rect(24, y + 1, Width - 122, 28),
-                Shorten(q.Title, 37), q.Completed ? _rowDone : _rowTitle);
+            const float labelX = 16f;
+            const float counterWidth = 57f;
+            const float counterX = Width - counterWidth - 13f;
+            const float labelWidth = counterX - labelX - 5f;
 
-            string counter = q.Completed ? "DONE" : q.Progress.HasValue && q.Target.HasValue
-                ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value : "—";
-            GUI.Label(new Rect(Width - 104, y + 1, 89, 28),
+            // A single readable line per quest; completed rows are green.
+            DrawRect(8, y + 6, 2, 17, q.Completed ? Success : GoldText);
+            GUI.Label(new Rect(labelX, y + 1, labelWidth, 24f),
+                FitText(q.Title, labelWidth, q.Completed ? _rowDone : _rowTitle),
+                q.Completed ? _rowDone : _rowTitle);
+
+            string counter = q.Progress.HasValue && q.Target.HasValue
+                ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value
+                : q.Completed ? "DONE" : "—";
+            GUI.Label(new Rect(counterX, y + 1, counterWidth, 24f),
                 counter, q.Completed ? _rowCounterDone : _rowCounter);
 
-            if (showBar)
+            DrawRect(11, y + ItemHeight - 2, Width - 22, 1, RowDivider);
+        }
+
+        private static string FitText(string value, float availableWidth, GUIStyle style)
+        {
+            if (string.IsNullOrEmpty(value)) return "Daily quest";
+            // Measure the localized text instead of truncating by character
+            // count: long translations still leave the counter visible.
+            if (style.CalcSize(new GUIContent(value)).x <= availableWidth)
+                return value;
+            const string suffix = "…";
+            int lo = 0, hi = value.Length;
+            while (lo < hi)
             {
-                const float barWidth = Width - 49f;
-                DrawRect(24, y + 35, barWidth, 9, TrackBorder);
-                DrawRect(25, y + 36, barWidth - 2f, 7, Track);
-                float percent = q.Completed ? 1f :
-                    q.Progress.HasValue && q.Target.HasValue && q.Target.Value > 0
-                        ? Mathf.Clamp01((float)q.Progress.Value / q.Target.Value) : 0f;
-                if (percent > 0f)
-                    DrawRect(25, y + 36, (barWidth - 2f) * percent, 7,
-                        q.Completed ? Success : GoldText);
+                int mid = (lo + hi + 1) / 2;
+                string candidate = value.Substring(0, mid) + suffix;
+                if (style.CalcSize(new GUIContent(candidate)).x <= availableWidth)
+                    lo = mid;
+                else hi = mid - 1;
             }
-            DrawRect(14, y + ItemHeight - 4f, Width - 28, 1, RowDivider);
+            return value.Substring(0, lo) + suffix;
         }
 
         private void InitializeStyles()
@@ -212,14 +221,13 @@ namespace StonewardsDailyQuestTracker
                 catch (Exception) { }
             }
 
-            _heading = MakeStyle(22, GoldText, TextAnchor.MiddleLeft);
-            _rowTitle = MakeStyle(19, PrimaryText, TextAnchor.MiddleLeft);
-            _rowDone = MakeStyle(19, Success, TextAnchor.MiddleLeft);
-            _rowCounter = MakeStyle(17, GoldText, TextAnchor.MiddleRight);
-            _rowCounterDone = MakeStyle(17, Success, TextAnchor.MiddleRight);
-            _subtle = MakeStyle(14, SecondaryText, TextAnchor.MiddleCenter);
-            _emptyTitle = MakeStyle(18, PrimaryText, TextAnchor.MiddleCenter);
-            _emptyInfo = MakeStyle(15, SecondaryText, TextAnchor.MiddleCenter);
+            _heading = MakeStyle(18, GoldText, TextAnchor.MiddleLeft);
+            _rowTitle = MakeStyle(17, PrimaryText, TextAnchor.MiddleLeft);
+            _rowDone = MakeStyle(17, Success, TextAnchor.MiddleLeft);
+            _rowCounter = MakeStyle(16, GoldText, TextAnchor.MiddleRight);
+            _rowCounterDone = MakeStyle(16, Success, TextAnchor.MiddleRight);
+            _subtle = MakeStyle(13, SecondaryText, TextAnchor.MiddleCenter);
+            _emptyTitle = MakeStyle(15, PrimaryText, TextAnchor.MiddleCenter);
         }
 
         private GUIStyle MakeStyle(int fontSize, Color color, TextAnchor alignment)
@@ -236,12 +244,6 @@ namespace StonewardsDailyQuestTracker
             style.clipping = TextClipping.Clip;
             style.padding = new RectOffset(0, 0, 0, 0);
             return style;
-        }
-
-        private static string Shorten(string text, int count)
-        {
-            if (string.IsNullOrEmpty(text)) return "Daily quest";
-            return text.Length > count ? text.Substring(0, count - 1) + "…" : text;
         }
 
         private static void DrawRect(float x, float y, float w, float h, Color color)
