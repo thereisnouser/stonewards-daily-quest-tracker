@@ -49,6 +49,7 @@ namespace StonewardsDailyQuestTracker
             float readabilityScale, bool autoScaleToResolution,
             CompletedQuestMode completedMode, bool showStatus,
             Rect? currencyBadge, int currencyGap,
+            int totalDailyQuests, bool hasSeenDailyQuests,
             float unitsPerPixelX = 1f, float unitsPerPixelY = 1f)
         {
             if (_heading == null) InitializeStyles();
@@ -61,9 +62,10 @@ namespace StonewardsDailyQuestTracker
                     remaining++;
             int matching = completedMode == CompletedQuestMode.Hide
                 ? remaining : quests.Count;
+            int total = Math.Max(quests.Count, totalDailyQuests);
 
             bool empty = matching == 0;
-            if (empty && quests.Count == 0 && !showStatus) return;
+            if (empty && quests.Count == 0 && !showStatus && !hasSeenDailyQuests) return;
             int visible = Math.Min(matching, MaxVisible);
             int overflow = Math.Max(0, matching - visible);
             float height = HeaderHeight + (empty ? 39f : visible * ItemHeight + 5f) +
@@ -147,12 +149,13 @@ namespace StonewardsDailyQuestTracker
                 DrawBackground(height);
                 GUI.Label(new Rect(13, 3, Width - 132, 26), "DAILY QUESTS", _heading);
                 GUI.Label(new Rect(Width - 120, 3, 105, 26),
-                    quests.Count == 0 ? "—" : remaining + "/" + quests.Count + " LEFT",
+                    quests.Count == 0 && !hasSeenDailyQuests
+                        ? "—" : remaining + "/" + total + " LEFT",
                     _rowCounter);
 
                 if (empty)
                 {
-                    bool noSource = quests.Count == 0;
+                    bool noSource = quests.Count == 0 && !hasSeenDailyQuests;
                     GUI.Label(new Rect(13, HeaderHeight + 5, Width - 26, 30),
                         noSource ? "QUEST PROGRESS NOT DETECTED" : "ALL QUESTS COMPLETED",
                         _emptyTitle);

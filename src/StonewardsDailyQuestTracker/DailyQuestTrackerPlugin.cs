@@ -240,7 +240,8 @@ namespace StonewardsDailyQuestTracker
         {
             if (!_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
                 return;
-            if (_quests.Count == 0 && !_showMissingDataNotice.Value)
+            if (_quests.Count == 0 && !_showMissingDataNotice.Value &&
+                !_reader.HasSeenDailyQuests)
                 return;
 
             Rect badge;
@@ -251,6 +252,7 @@ namespace StonewardsDailyQuestTracker
                 _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
                 _completedQuestMode.Value, _showMissingDataNotice.Value,
                 currencyBounds, _currencyGap.Value,
+                _reader.TotalDailyQuests, _reader.HasSeenDailyQuests,
                 unitsPerPixelX, unitsPerPixelY);
         }
 

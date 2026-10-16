@@ -30,6 +30,10 @@ namespace StonewardsDailyQuestTracker
             ManagerType?.GetProperty("CurrentDailyQuests", Flags);
         private static readonly FieldInfo RuntimeMissions =
             ManagerType?.GetField("runtimeMissions", Flags);
+        // The game keeps this total separately from its live daily list,
+        // which can shrink when a quest is completed or its reward claimed.
+        private static readonly FieldInfo DailyQuestCount =
+            ManagerType?.GetField("DAILY_QUESTS_COUNT", Flags);
         private static readonly MethodInfo IsQuestCompleted =
             ManagerType != null && QuestType != null
                 ? ManagerType.GetMethod("IsQuestCompleted", Flags, null,
@@ -55,6 +59,8 @@ namespace StonewardsDailyQuestTracker
 
         private readonly ManualLogSource _log;
         private bool _reported;
+        public int TotalDailyQuests { get; private set; }
+        public bool HasSeenDailyQuests { get; private set; }
         private readonly List<QuestView> _empty = new List<QuestView>(0);
 
         public DailyQuestReader(ManualLogSource log)
@@ -80,6 +86,8 @@ namespace StonewardsDailyQuestTracker
             // No session-persistent quest object references are retained.
             // Important: daily objectives can regenerate at the daily reset.
             _reported = false;
+            TotalDailyQuests = 0;
+            HasSeenDailyQuests = false;
         }
 
         public List<QuestView> ReadDailyQuests()
@@ -99,6 +107,15 @@ namespace StonewardsDailyQuestTracker
                 WarnOnce("Daily quest selection or runtime missions are not initialized yet.");
                 return _empty;
             }
+
+            // Use the game's declared daily quest count for the denominator.
+            // The active list alone is not a reliable total after completion.
+            // Retain the largest observed selection as a compatibility fallback.
+            object countRaw = Get(DailyQuestCount, null);
+            if (countRaw is int declaredCount && declaredCount > 0 && declaredCount <= 64)
+                TotalDailyQuests = Math.Max(declaredCount, chosen.Count);
+            else
+                TotalDailyQuests = Math.Max(TotalDailyQuests, chosen.Count);
 
             var result = new List<QuestView>(chosen.Count);
             for (int i = 0; i < chosen.Count; i++)
@@ -166,11 +183,16 @@ namespace StonewardsDailyQuestTracker
                 });
             }
 
-            if (result.Count == 0)
+            if (result.Count > 0)
+            {
+                HasSeenDailyQuests = true;
+                _reported = false;
+            }
+            else if (!HasSeenDailyQuests)
+            {
                 WarnOnce("No selected daily quests matched live DAILY runtime missions. " +
                     "Try opening Missions / Daily and press F9 if this persists.");
-            else
-                _reported = false;
+            }
             return result;
         }
 
