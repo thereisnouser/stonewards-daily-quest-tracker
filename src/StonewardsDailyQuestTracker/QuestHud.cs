@@ -84,7 +84,7 @@ namespace StonewardsDailyQuestTracker
                 DrawBackground(height);
                 GUI.Label(new Rect(16, 5, Width - 128, 34), "DAILY QUESTS", _heading);
                 GUI.Label(new Rect(Width - 103, 7, 85, 30),
-                    empty ? "TRACKER" : matching + " ACTIVE", _rowCounter);
+                    empty ? "TRACKER" : matching + " QUESTS", _rowCounter);
 
                 if (empty)
                 {
