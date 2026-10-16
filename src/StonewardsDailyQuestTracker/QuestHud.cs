@@ -39,6 +39,8 @@ namespace StonewardsDailyQuestTracker
         private GUIStyle _subtle;
         private GUIStyle _emptyTitle;
         private Font _font;
+        private readonly Dictionary<string, string> _fittedLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal);
 
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
@@ -180,13 +182,17 @@ namespace StonewardsDailyQuestTracker
             DrawRect(11, y + ItemHeight - 2, Width - 22, 1, RowDivider);
         }
 
-        private static string FitText(string value, float availableWidth, GUIStyle style)
+        private string FitText(string value, float availableWidth, GUIStyle style)
         {
             if (string.IsNullOrEmpty(value)) return "Daily quest";
-            // Measure the localized text instead of truncating by character
-            // count: long translations still leave the counter visible.
+            if (_fittedLabels.TryGetValue(value, out string cached))
+                return cached;
+            // Measure each distinct localized label once, not every frame.
             if (style.CalcSize(new GUIContent(value)).x <= availableWidth)
+            {
+                _fittedLabels[value] = value;
                 return value;
+            }
             const string suffix = "…";
             int lo = 0, hi = value.Length;
             while (lo < hi)
@@ -197,7 +203,9 @@ namespace StonewardsDailyQuestTracker
                     lo = mid;
                 else hi = mid - 1;
             }
-            return value.Substring(0, lo) + suffix;
+            string fitted = value.Substring(0, lo) + suffix;
+            _fittedLabels[value] = fitted;
+            return fitted;
         }
 
         private void InitializeStyles()
