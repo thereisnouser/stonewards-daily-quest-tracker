@@ -41,6 +41,8 @@ namespace StonewardsDailyQuestTracker
         private Font _font;
         private readonly Dictionary<string, string> _fittedLabels =
             new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _fittedCompletedLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal);
 
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
@@ -212,7 +214,7 @@ namespace StonewardsDailyQuestTracker
                 DrawRect(8, y + 6, 2, 17, GoldText);
             GUIStyle rowStyle = q.Completed ? _rowDone : _rowTitle;
             GUI.Label(new Rect(labelX, y + 1, labelWidth, 24f),
-                FitText(q.Title, labelWidth, rowStyle), rowStyle);
+                FitText(q.Title, labelWidth, rowStyle, q.Completed), rowStyle);
 
             string counter = q.Progress.HasValue && q.Target.HasValue
                 ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value
@@ -234,15 +236,21 @@ namespace StonewardsDailyQuestTracker
             DrawRect(x + 18, y, 3, 3, Success);
         }
 
-        private string FitText(string value, float availableWidth, GUIStyle style)
+        private string FitText(string value, float availableWidth, GUIStyle style,
+            bool completed)
         {
             if (string.IsNullOrEmpty(value)) return "Daily quest";
-            if (_fittedLabels.TryGetValue(value, out string cached))
+            // Completed rows have a narrower text area due to their tick icon.
+            // Keep separate width-fit caches so newly completed titles cannot
+            // reuse a longer label and overlap the counter.
+            Dictionary<string, string> cache = completed
+                ? _fittedCompletedLabels : _fittedLabels;
+            if (cache.TryGetValue(value, out string cached))
                 return cached;
             // Measure each distinct localized label once, not every frame.
             if (style.CalcSize(new GUIContent(value)).x <= availableWidth)
             {
-                _fittedLabels[value] = value;
+                cache[value] = value;
                 return value;
             }
             const string suffix = "…";
@@ -256,7 +264,7 @@ namespace StonewardsDailyQuestTracker
                 else hi = mid - 1;
             }
             string fitted = value.Substring(0, lo) + suffix;
-            _fittedLabels[value] = fitted;
+            cache[value] = fitted;
             return fitted;
         }
 
