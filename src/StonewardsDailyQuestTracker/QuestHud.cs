@@ -198,10 +198,10 @@ namespace StonewardsDailyQuestTracker
 
         private void DrawRow(QuestView q, float y)
         {
-            const float labelX = 16f;
+            float labelX = q.Completed ? 33f : 16f;
             const float counterWidth = 57f;
             const float counterX = Width - counterWidth - 13f;
-            const float labelWidth = counterX - labelX - 5f;
+            float labelWidth = counterX - labelX - 5f;
 
             // Completed rows are explicitly check-marked (rather than only
             // tinted green). The tick is drawn from rectangles so it remains
