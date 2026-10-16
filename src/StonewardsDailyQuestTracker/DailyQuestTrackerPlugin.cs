@@ -94,7 +94,7 @@ namespace StonewardsDailyQuestTracker
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
-            _nativeHudLayer = new NativeHudLayer(DrawHudOnNativePanel, Logger);
+            _nativeHudLayer = new NativeHudLayer(Logger);
             Logger.LogInfo("Daily Quest Tracker v0.1.2 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
@@ -182,12 +182,31 @@ namespace StonewardsDailyQuestTracker
                 else
                     _nativeHudLayer.Detach();
 
-                if (Time.unscaledTime < _nextUpdate)
-                    return;
-                _nextUpdate = Time.unscaledTime + _refresh.Value;
-                // Cheap, direct reads of only selected DAILY runtime missions.
-                // The game can reset/replace quest objects at any time.
-                _quests = _reader.ReadDailyQuests();
+                if (Time.unscaledTime >= _nextUpdate)
+                {
+                    _nextUpdate = Time.unscaledTime + _refresh.Value;
+                    // Cheap, direct reads of only selected DAILY runtime missions.
+                    _quests = _reader.ReadDailyQuests();
+                }
+
+                if (_nativeHudLayer.Attached)
+                {
+                    Rect badge;
+                    Rect? currencyBounds =
+                        _anchorToCurrencyHud.Value &&
+                        _corner.Value == PanelCorner.TopRight &&
+                        _currencyAnchor.TryGetBadgeBounds(out badge)
+                            ? (Rect?)badge : null;
+
+                    _nativeHudLayer.Sync(_quests,
+                        _enabled.Value && _visible && !IsBlocked(),
+                        _corner.Value, _xOffset.Value, _yOffset.Value,
+                        _scale.Value, _readabilityScale.Value,
+                        _autoScaleToResolution.Value, _completedQuestMode.Value,
+                        _showMissingDataNotice.Value, currencyBounds,
+                        _currencyGap.Value, _reader.TotalDailyQuests,
+                        _reader.HasSeenDailyQuests);
+                }
             }
             catch (Exception ex)
             {
@@ -220,23 +239,10 @@ namespace StonewardsDailyQuestTracker
                 GUI.color = previous;
             }
 
-            // Do not suppress the working OnGUI HUD until the native
-            // container has actually produced a recent repaint. This prevents
-            // a mounted-but-invisible UI element from hiding every quest.
-            if (!_nativeHudLayer.HasRecentRepaint)
+            // Native VisualElements and IMGUI must never draw the same panel:
+            // the fallback OnGUI layer would cover game notifications.
+            if (!_nativeHudLayer.IsDrawing)
                 DrawHud(1f, 1f);
-        }
-
-        private void DrawHudOnNativePanel()
-        {
-            if (Event.current == null || Event.current.type != EventType.Repaint)
-                return;
-            if (!_nativeHudLayer.Attached)
-                return;
-            DrawHud(_nativeHudLayer.UnitsPerPixelX,
-                _nativeHudLayer.UnitsPerPixelY,
-                _nativeHudLayer.OriginScreenX,
-                _nativeHudLayer.OriginScreenY);
         }
 
         private void DrawHud(float unitsPerPixelX, float unitsPerPixelY,
