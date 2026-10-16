@@ -2,6 +2,16 @@
 
 Lightweight client-side **Stonewards** BepInEx 5 mod that displays the **five currently selected daily quests and their live progress** during a match.
 
+## v0.2.4 — completed daily quests
+
+The tracker now clearly distinguishes completed quests without losing the compact HUD.
+
+- `General.CompletedQuestMode = Hide` (default): remove completed quests from the in-match list immediately after the next normal progress refresh. The panel shrinks automatically as quests are completed.
+- `General.CompletedQuestMode = Mark`: keep all daily quests visible, show unfinished quests first, and move finished quests to the bottom with green text, a font-independent green check mark and their numeric progress.
+- The header shows the remaining/total count (for example `3/5 LEFT`). When all five quests are completed and mode is `Hide`, a compact `ALL QUESTS COMPLETED` notice remains below the currency badge.
+
+The old `General.HideCompleted` option from earlier builds is **no longer used**; the new `CompletedQuestMode` setting defaults to `Hide` even when updating an existing profile. Both modes are purely visual; completion continues to come from Stonewards' own `QuestManager` runtime state.
+
 ## v0.2.3 — optional positioning relative to the currency HUD (test build)
 
 When the panel is anchored at `TopRight`, `Appearance.AnchorToCurrencyHud = true` (default) attempts to locate the **visible in-game currency badge** and aligns the quest panel's right edge with the badge's right edge. The quest panel is placed directly **below** the badge, separated by `Appearance.CurrencyGap = 10` physical pixels (configurable 0–50).
@@ -32,7 +42,7 @@ Settings are stored in `BepInEx/config/community.stonewards.dailyquesttracker.cf
 - `Appearance.AutoScaleToResolution` (default `true`): use PartyHUD-style proportional scaling relative to 1920×1080, fitting to screen bounds
 - `Appearance.AnchorToCurrencyHud` (default `true`): follow the native currency HUD when `Anchor = TopRight`, falling back if undiscoverable
 - `Appearance.CurrencyGap` (default `10`): vertical distance in physical pixels below the coin badge
-- `General.Enabled`, `General.HideCompleted`, `General.RefreshSeconds`, `General.ShowMissingQuestData`
+- `General.Enabled`, `General.CompletedQuestMode` (`Hide` or `Mark`), `General.RefreshSeconds`, `General.ShowMissingQuestData`
 
 The previous `Appearance.ShowProgressBars` entry is **no longer used**. Existing config files can retain that obsolete key without affecting the text-only layout. Manual scale, anchor and offset values from earlier versions are preserved.
 
@@ -57,4 +67,4 @@ The named profile must already exist. The script builds against installed game a
 - `QuestHud.cs`: compact resolution-aware text overlay
 - `QuestDiagnostics.cs`: optional one-shot quest API report
 
-The mod reads game state but does not modify quests, saves or networking. **v0.2.3 requires a build and an in-game visual check of currency HUD discovery.**
+The mod reads game state but does not modify quests, saves or networking. **v0.2.4 requires a build and in-game verification of completed-quest behavior.**
