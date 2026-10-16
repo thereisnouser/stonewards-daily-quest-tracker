@@ -87,7 +87,7 @@ try {
 
     # Verify expected entries. Avoid accidentally releasing a ZIP containing
     # source code, references to game DLLs, or local profile config.
-    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
     try {
         $names = @($archive.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
