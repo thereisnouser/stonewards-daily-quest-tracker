@@ -8,8 +8,8 @@ namespace StonewardsDailyQuestTracker
 {
     /// <summary>
     /// A true UI Toolkit HUD. Unlike an IMGUIContainer/MonoBehaviour.OnGUI,
-    /// native VisualElements respect sibling paint order, so the game's
-    /// QuestNotificationHolder can paint ON TOP of our quest panel.
+    /// native VisualElements respect sibling paint order. We append the quest
+    /// panel after the HUD and raise QuestNotificationHolder above it.
     /// The existing QuestHud remains the safe legacy fallback.
     /// </summary>
     internal sealed class NativeHudLayer
@@ -123,8 +123,12 @@ namespace StonewardsDailyQuestTracker
 
                 InitializeStyles();
                 BuildPanel();
+                // Append our native panel after the existing HUD background,
+                // then move ONLY the game's notification branch to the very
+                // front. Otherwise later full-screen siblings could obscure
+                // the entire quest panel (the original hidden-HUD bug).
                 parent.Add(_panel);
-                _panel.PlaceBehind(notificationBranch);
+                notificationBranch.BringToFront();
                 _panelRoot = root;
                 _parent = parent;
                 _notificationBranch = notificationBranch;
