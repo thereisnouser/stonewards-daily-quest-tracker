@@ -2,7 +2,7 @@
 
 A lightweight, independent BepInEx 5 mod that aims to display the **current game's daily quest objectives** inside a match, along with their actual completion state and `current / required` progress.
 
-## Status: 0.1.1 — experimental / API discovery
+## Status: 0.1.2 — experimental / API discovery
 
 The HUD, settings, source-code integration and diagnostic collector are implemented. The game quest structures **have not been verified against the Stonewards 0.2.3 Assembly-CSharp.dll**, so displaying and tracking particular quests is **not yet guaranteed**. The reader uses guarded reflection to discover daily quest collections and to pull their counters directly. It will not invent progress from gameplay events. If discovery fails, it shows nothing by default and writes a warning to BepInEx's log.
 
@@ -10,7 +10,11 @@ The HUD, settings, source-code integration and diagnostic collector are implemen
 
 The redesigned HUD shows up to five real quests in a compact Party HUD-inspired panel, and can display "QUEST PROGRESS NOT DETECTED" instead of a misleading list of database templates. **Live quest API mapping is still unconfirmed**; please provide the F9 report to finish the actual progress integration.
 
-**What we need for a confirmed integration:** run a session, press **F9**, and share `BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt`. With this report we can replace the generic adapter with exact game field/property access and verify progress semantics. The report contains quest API member names and short quest-state values; inspect it before sharing.
+**v0.1.2 diagnostic fix:** pressing F9 writes a bounded quest API report with on-screen success/error feedback and an IMGUI hotkey fallback. Because F9 might be swallowed by the game or keyboard function-key handling, **opening Missions -> Daily automatically exports the same diagnostic report after the menu finishes populating** (once per scene). No extra keyboard shortcut is required.
+
+Report path inside the profile: `BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt`. If missing, check `BepInEx/LogOutput.log` for `Quest diagnostic export failed`. The report may include names or game state values; inspect it before sending it.
+
+**What we need for a confirmed integration:** open **Missions -> Daily** (or press **F9**) and share `BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt`. With this report we can replace the generic adapter with exact game field/property access and verify progress semantics. The report contains quest API member names and short quest-state values; inspect it before sharing.
 
 ## Build and install
 
@@ -29,7 +33,7 @@ Create and launch `sw-test-daily-quests` via r2modman first, or substitute an ex
 ## Controls
 
 - `F6` — show/hide the daily quest HUD.
-- `F9` — export quest-state diagnostics (also works in the lobby).
+- `F9` — manually export quest-state diagnostics. Opening **Missions -> Daily** also exports automatically.
 
 ### Config
 
@@ -41,14 +45,15 @@ Settings saved by BepInEx to `BepInEx/config/community.stonewards.dailyquesttrac
 - `Appearance.Scale`: 0.65–1.5 (adaptive to display resolution)
 - `Appearance.ShowProgressBars`: true
 - `General.Enabled`, `General.HideCompleted`, `General.RefreshSeconds`, `General.ShowMissingQuestData`
-- `Hotkeys.TogglePanel`, `Hotkeys.DumpQuestDiagnostics`
+- `Hotkeys.TogglePanel`, `Hotkeys.DumpQuestDiagnostics`, `Diagnostics.AutoCaptureWhenMissionsOpened`
 
 The overlay is read-only. It intentionally disappears in in-game menus, loading screens, upgrades and inventory, and when no Mirror gameplay session is active. It never intercepts mouse input or sends Mirror/RPC calls.
 
 ## Structure
 
 - `DailyQuestTrackerPlugin.cs`: BepInEx lifecycle, hotkeys, UI visibility and configuration
-- `DailyQuestReader.cs`: read-only quest reflection and API diagnostics
+- `DailyQuestReader.cs`: read-only quest reflection and cached live sources
+- `QuestDiagnostics.cs`: bounded, on-demand/automatic quest API and UI snapshot
 - `QuestHud.cs`: Stonewards/PartyHUD-inspired IMGUI panel
 - `build-and-install.ps1`: build with local Unity/BepInEx refs, then copy to test profile
 
