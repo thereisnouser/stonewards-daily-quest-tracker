@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
@@ -49,8 +49,8 @@ namespace StonewardsDailyQuestTracker
             _enabled = Config.Bind("General", "Enabled", true, "Enable Daily Quest Tracker.");
             _hideCompleted = Config.Bind("General", "HideCompleted", false, "Hide completed daily quests.");
             _showBars = Config.Bind("Appearance", "ShowProgressBars", true, "Draw a small progress bar below each objective.");
-            _showMissingDataNotice = Config.Bind("General", "ShowDiscoveryStatus", true,
-                "Show a status panel when the game quest API could not be recognized. The default is to show nothing.");
+            _showMissingDataNotice = Config.Bind("General", "ShowMissingQuestData", true,
+                "Show a compact warning when the active quest data has not been recognized.");
             _corner = Config.Bind("Appearance", "Anchor", PanelCorner.TopRight, "Panel screen corner.");
             _xOffset = Config.Bind("Appearance", "HorizontalOffset", 18, "Horizontal edge inset in actual pixels.");
             _yOffset = Config.Bind("Appearance", "VerticalOffset", 240,
