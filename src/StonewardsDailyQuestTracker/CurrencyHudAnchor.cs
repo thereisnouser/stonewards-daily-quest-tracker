@@ -15,7 +15,8 @@ namespace StonewardsDailyQuestTracker
     /// </summary>
     internal sealed class CurrencyHudAnchor
     {
-        private const float RetrySeconds = 12f;
+        private const float RetrySeconds = 8f;
+        private const int MaxAttemptsPerScene = 2;
         private const int MaxVisitedElements = 3500;
         private readonly ManualLogSource _log;
         private TextElement _currencyLabel;
@@ -24,6 +25,7 @@ namespace StonewardsDailyQuestTracker
         private int _lastWidth;
         private int _lastHeight;
         private bool _loggedFailure;
+        private int _attemptCount;
 
         public CurrencyHudAnchor(ManualLogSource log)
         {
@@ -38,6 +40,7 @@ namespace StonewardsDailyQuestTracker
             _lastWidth = 0;
             _lastHeight = 0;
             _loggedFailure = false;
+            _attemptCount = 0;
         }
 
         public void RefreshIfNeeded()
@@ -55,11 +58,16 @@ namespace StonewardsDailyQuestTracker
             if (_currencyLabel != null && _currencyLabel.panel != null)
                 return;
 
+            // Do not repeat costly UI discovery forever when the game's HUD
+            // implementation differs. Two attempts per scene are sufficient
+            // for the UI to initialize; after that manual offsets are used.
             _currencyLabel = null;
             _badge = null;
-            if (Time.unscaledTime < _nextProbe)
+            if (_attemptCount >= MaxAttemptsPerScene ||
+                Time.unscaledTime < _nextProbe)
                 return;
             _nextProbe = Time.unscaledTime + RetrySeconds;
+            _attemptCount++;
             Discover();
         }
 
