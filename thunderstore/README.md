@@ -2,10 +2,6 @@
 
 Keep your **daily quests and their real progress** on screen while you play. No need to keep opening the Missions menu.
 
-![Illustrated panel preview](https://raw.githubusercontent.com/thereisnouser/stonewards-daily-quest-tracker/main/assets/preview.png)
-
-*Illustrated preview of the compact daily quest panel. The mod uses live in-game values.*
-
 ## Features
 
 - **Live progress:** text-only objectives with current/target counters read directly from the game.
