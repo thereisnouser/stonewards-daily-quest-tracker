@@ -37,6 +37,7 @@ The mod attempts to anchor the panel under the game's coin counter by default. C
 | Setting | Default | Description |
 | --- | --- | --- |
 | `Appearance.AnchorToCurrencyHud` | `true` | Follow the coin counter when detectable |
+| `Appearance.RenderBehindGameUI` | `true` | Let in-game notifications appear above the quest panel; disable to use legacy rendering |
 | `Appearance.CurrencyGap` | `10` | Gap below the counter, in screen pixels |
 | `Appearance.Anchor` | `TopRight` | Manual corner if coin anchoring is disabled |
 | `Appearance.HorizontalOffset` | `18` | Manual horizontal inset |

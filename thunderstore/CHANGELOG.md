@@ -1,15 +1,12 @@
 # Changelog
 
-## 0.1.2 (testing)
+## 0.1.2
 
-- Restored the original stepped gold frame and burgundy header in the native UI Toolkit quest panel.
-- Keep the remaining-quest counter based on the game's total daily quest count, even when completed quests disappear from the active list (e.g. 4/5 LEFT).
-- Fix native HUD draw order so the quest panel remains visible rather than being placed behind full-screen game HUD elements.
-- Keep a legacy OnGUI fallback if the native overlay stops repainting.
-- Replaced the experimental IMGUIContainer layering with a real UI Toolkit panel. The game now draws notification VisualElements after the quest tracker, so pop-ups appear above it.
-- Kept legacy OnGUI as a fallback if native UI cannot be attached.
-- Preserved screen-pixel positioning, quest display modes, and adaptive scaling.
-- Add `Appearance.RenderBehindGameUI` (enabled by default) with an option to return to legacy OnGUI rendering.
+- **Game notifications now appear above the daily quest panel**, including quest completion and player join messages.
+- Restored the original stepped gold frame and burgundy header after moving the tracker to native UI Toolkit rendering.
+- Fixed the remaining-quest counter so completed quests don't shrink the total (e.g. `4/5 LEFT` rather than `4/4 LEFT`).
+- Added `Appearance.RenderBehindGameUI` (enabled by default), with a legacy renderer fallback.
+- Kept coin anchoring, adaptive scaling, and Hide/Mark completed-quest modes.
 
 ## 0.1.1
 
