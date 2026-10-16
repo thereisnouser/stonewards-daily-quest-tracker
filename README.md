@@ -1,70 +1,85 @@
 # Stonewards Daily Quest Tracker
 
-Lightweight client-side **Stonewards** BepInEx 5 mod that displays the **five currently selected daily quests and their live progress** during a match.
+**Your daily objectives, right where you need them.** A lightweight, client-side quest tracker that keeps the current Stonewards daily missions and their live progress visible during a run.
 
-## v0.2.4 — completed daily quests
+![Daily Quest Tracker — illustrated panel preview](assets/preview.png)
 
-The tracker now clearly distinguishes completed quests without losing the compact HUD.
+> Illustrated UI preview. The in-game HUD is more compact and uses live quest data.
 
-- `General.CompletedQuestMode = Hide` (default): remove completed quests from the in-match list immediately after the next normal progress refresh. The panel shrinks automatically as quests are completed.
-- `General.CompletedQuestMode = Mark`: keep all daily quests visible, show unfinished quests first, and move finished quests to the bottom with green text, a font-independent green check mark and their numeric progress.
-- The header shows the remaining/total count (for example `3/5 LEFT`). When all five quests are completed and mode is `Hide`, a compact `ALL QUESTS COMPLETED` notice remains below the currency badge.
+[![Stonewards](https://img.shields.io/badge/Game-Stonewards-7e3740)](https://thunderstore.io/c/stonewards/)
+[![BepInEx 5](https://img.shields.io/badge/Loader-BepInEx%205-233952)](https://thunderstore.io/c/stonewards/p/BepInEx/BepInExPack/)
+[![Thunderstore](https://img.shields.io/badge/Thunderstore-DailyQuestTracker-d3ad65)](https://thunderstore.io/c/stonewards/)
+![Version](https://img.shields.io/badge/Version-0.2.4-d2b471)
 
-The old `General.HideCompleted` option from earlier builds is **no longer used**; the new `CompletedQuestMode` setting defaults to `Hide` even when updating an existing profile. Both modes are purely visual; completion continues to come from Stonewards' own `QuestManager` runtime state.
+## Why use it?
 
-## v0.2.3 — optional positioning relative to the currency HUD (test build)
+- **Live daily progress** — quest descriptions and `current / target` counters come directly from Stonewards, not from guessed gameplay events.
+- **Unobtrusive HUD** — compact text-only panel with the game's dark, burgundy-and-gold aesthetic.
+- **Completed quest handling** — hide completed objectives, or show them at the bottom with a green checkmark.
+- **Follows your coins** — positions itself below the currency display when it can locate it; configurable fallback placement.
+- **Resolution-aware** — adapts proportionally from 1080p to 1440p, 4K and ultrawide monitors.
+- **Client-side only** — no server installation and no gameplay or save modification.
 
-When the panel is anchored at `TopRight`, `Appearance.AnchorToCurrencyHud = true` (default) attempts to locate the **visible in-game currency badge** and aligns the quest panel's right edge with the badge's right edge. The quest panel is placed directly **below** the badge, separated by `Appearance.CurrencyGap = 10` physical pixels (configurable 0–50).
+## In-game behavior
 
-The game currency UI has not yet been mapped to an exact public component. Detection currently uses a **bounded, best-effort read-only lookup** of visible numeric UI Toolkit labels near the top-right of the display. The search runs **at most twice per scene**; once discovered, the element's bounds are reused and updated as the UI moves. There are no scene-wide searches per frame. If detection fails or the currency widget isn't UI Toolkit, the panel **falls back to the existing `TopRight` offsets**. Verify the anchor visually in game before relying on it.
+| Situation | What you see |
+| --- | --- |
+| A daily objective gains progress | The counter updates automatically |
+| An objective completes (`Hide` mode) | The row disappears; the panel gets shorter |
+| An objective completes (`Mark` mode) | A green check and completed row below unfinished quests |
+| All daily objectives complete | A small `ALL QUESTS COMPLETED` message in `Hide` mode |
+| Missions, inventory or other supported game menus open | The HUD gets out of the way |
 
-Set `Appearance.AnchorToCurrencyHud = false` to use the manual offsets even with `TopRight`. Selecting another corner also uses manual positioning. `VerticalOffset` and `HorizontalOffset` are fallback values, not additional adjustments to the currency-relative anchor.
+**Hotkeys:** `F6` toggles the panel. `F9` exports a diagnostic report only when troubleshooting.
 
-## v0.2.2 — compact text-only HUD
+## Installation
 
-The panel now shows one quest per line with its numeric `current/target` progress on the right. **No progress bars.** Completed objectives are highlighted in green, titles are width-fitted to avoid counter overlap, and the compact panel retains the in-game burgundy/gold design. It is roughly half as tall as the old five-quest layout.
+### Via Thunderstore / r2modman
 
-Quest progress comes directly from `QuestManager.CurrentDailyQuests` paired with `QuestManager.runtimeMissions` (`missionType = DAILY`), not from a quest database or inferred gameplay events. Regular updates only inspect these small live collections; they do not perform scene-wide scans.
+Once published, install **DailyQuestTracker** from the [Stonewards community](https://thunderstore.io/c/stonewards/) with r2modman or another Thunderstore-compatible mod manager. BepInEx is installed automatically as a dependency. Launch the game through the mod manager.
 
-### Controls
+Only players who want to see the overlay need this mod.
 
-- `F6`: show/hide the panel
-- `F9`: export a diagnostic report manually (not necessary for normal gameplay)
+### Build from source
 
-### Appearance and configuration
-
-Settings are stored in `BepInEx/config/community.stonewards.dailyquesttracker.cfg`.
-
-- `Appearance.Anchor`: `TopRight`, `TopLeft`, `BottomRight` or `BottomLeft`
-- `Appearance.HorizontalOffset` / `Appearance.VerticalOffset`: offset in actual screen pixels
-- `Appearance.Scale` (default `1.0`): manual size multiplier
-- `Appearance.ReadabilityScale` (default `1.12`): additional size multiplier
-- `Appearance.AutoScaleToResolution` (default `true`): use PartyHUD-style proportional scaling relative to 1920×1080, fitting to screen bounds
-- `Appearance.AnchorToCurrencyHud` (default `true`): follow the native currency HUD when `Anchor = TopRight`, falling back if undiscoverable
-- `Appearance.CurrencyGap` (default `10`): vertical distance in physical pixels below the coin badge
-- `General.Enabled`, `General.CompletedQuestMode` (`Hide` or `Mark`), `General.RefreshSeconds`, `General.ShowMissingQuestData`
-
-The previous `Appearance.ShowProgressBars` entry is **no longer used**. Existing config files can retain that obsolete key without affecting the text-only layout. Manual scale, anchor and offset values from earlier versions are preserved.
-
-### Build and install
-
-Requirements: Stonewards 0.2.3, BepInEx 5 via r2modman, and .NET SDK. Run PowerShell from the cloned repository:
+Requirements: Stonewards installed locally, .NET SDK and a BepInEx 5 profile.
 
 ```powershell
-git pull
+git clone https://github.com/thereisnouser/stonewards-daily-quest-tracker.git
+cd stonewards-daily-quest-tracker
 
 powershell -ExecutionPolicy Bypass -File .\build-and-install.ps1 `
   -GameDir "F:\Steam\steamapps\common\Stonewards" `
   -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-daily-quest-tracker"
 ```
 
-The named profile must already exist. The script builds against installed game assemblies and installs the resulting DLL to that profile; no game assets or proprietary DLLs are included in this repository.
+Close Stonewards before rebuilding: Windows cannot overwrite a DLL still loaded by the game.
 
-### Sources
+## Configuration
 
-- `DailyQuestTrackerPlugin.cs`: BepInEx lifecycle, hotkeys, configuration and visibility
-- `DailyQuestReader.cs`: direct read-only daily mission data access
-- `QuestHud.cs`: compact resolution-aware text overlay
-- `QuestDiagnostics.cs`: optional one-shot quest API report
+Edit `BepInEx/config/community.stonewards.dailyquesttracker.cfg` in your selected profile after the first launch.
 
-The mod reads game state but does not modify quests, saves or networking. **v0.2.4 requires a build and in-game verification of completed-quest behavior.**
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `General.CompletedQuestMode` | `Hide` | `Hide` completed objectives or `Mark` them with a check |
+| `Appearance.AnchorToCurrencyHud` | `true` | Place below the in-game currency panel if detected |
+| `Appearance.CurrencyGap` | `10` | Spacing below the currency panel in pixels |
+| `Appearance.Anchor` | `TopRight` | Screen corner when using manual positioning |
+| `Appearance.HorizontalOffset` | `18` | Manual horizontal edge inset, in pixels |
+| `Appearance.VerticalOffset` | `240` | Manual vertical edge inset, in pixels |
+| `Appearance.AutoScaleToResolution` | `true` | Scale with screen resolution |
+| `Appearance.Scale` | `1.0` | Base HUD size |
+| `Appearance.ReadabilityScale` | `1.12` | Additional text/panel enlargement |
+| `General.RefreshSeconds` | `1.25` | Interval for reading quest progress |
+
+Other settings include `General.Enabled`, `General.ShowMissingQuestData` and configurable hotkeys.
+
+The currency anchor uses a bounded UI lookup; when it cannot identify the coin display, normal manual offsets remain available.
+
+## Feedback and development
+
+Found an issue or have an idea? [Open a GitHub issue](https://github.com/thereisnouser/stonewards-daily-quest-tracker/issues).
+
+The tracker reads the game's selected daily quests from `QuestManager.CurrentDailyQuests` and their live values from `QuestManager.runtimeMissions`. It does not write quest data or send network messages. Tested on Stonewards **0.2.3**; future game updates may require adjustments.
+
+Developers can run `build-thunderstore.ps1` to generate a Thunderstore ZIP from the locally built DLL and packaged art assets. See [Release packaging](thunderstore/README.md).
