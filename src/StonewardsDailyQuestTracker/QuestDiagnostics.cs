@@ -41,11 +41,154 @@ namespace StonewardsDailyQuestTracker
             output.AppendLine("This diagnostic contains runtime quest values and UI labels. Review before sharing.");
             output.AppendLine();
 
+            // Capture native UI while the banner is actually on screen, before
+            // the slower general quest schema dump.
+            AppendNotificationUi(output);
             AppendGameTypes(output);
             AppendMissionMenu(output);
 
             File.WriteAllText(path, output.ToString(), Encoding.UTF8);
             return path;
+        }
+
+        // One-shot notification/UI snapshot used to determine which runtime
+        // layer actually owns Stonewards' pop-up banners. Called only on F9,
+        // never from Update() or the regular quest-render path.
+        private static void AppendNotificationUi(StringBuilder output)
+        {
+            output.AppendLine("=== NOTIFICATION UI / OVERLAY LAYER SNAPSHOT ===");
+            try
+            {
+                Assembly assembly = typeof(FirstPersonController).Assembly;
+                foreach (string typeName in new[] { "NotificationHolder", "UINotification" })
+                {
+                    Type type = assembly.GetType(typeName);
+                    if (type == null)
+                    {
+                        output.AppendLine("Game type missing: " + typeName);
+                        continue;
+                    }
+                    output.AppendLine("GAME TYPE " + type.FullName +
+                        " derives from " + (type.BaseType == null ? "?" : type.BaseType.FullName));
+                    foreach (FieldInfo field in GetAllFields(type).Take(45))
+                        output.AppendLine("  FIELD " + field.FieldType.Name + " " + field.Name);
+                    if (!typeof(UnityEngine.Object).IsAssignableFrom(type)) continue;
+
+                    UnityEngine.Object[] objects = Resources.FindObjectsOfTypeAll(type);
+                    output.AppendLine("  LOADED INSTANCES " + objects.Length);
+                    int captured = 0;
+                    foreach (UnityEngine.Object instance in objects)
+                    {
+                        var component = instance as Component;
+                        if (component == null) continue;
+                        if (!component.gameObject.scene.IsValid() ||
+                            !component.gameObject.activeInHierarchy) continue;
+                        output.AppendLine("  LIVE " + component.gameObject.name +
+                            " hierarchy=" + DescribeParents(component.transform));
+                        RectTransform rectTransform = component.GetComponent<RectTransform>();
+                        if (rectTransform != null)
+                        {
+                            Vector3[] corners = new Vector3[4];
+                            rectTransform.GetWorldCorners(corners);
+                            output.AppendLine("    RECT corners=" + corners[0] + " / " + corners[2]);
+                        }
+                        if (++captured >= 12) break;
+                    }
+                }
+
+                var documents = Resources.FindObjectsOfTypeAll<UIDocument>();
+                output.AppendLine("LOADED UI DOCUMENTS " + documents.Length);
+                int remaining = 4500, shown = 0;
+                foreach (UIDocument document in documents)
+                {
+                    if (remaining <= 0 || shown >= 220 || output.Length >= Limit) break;
+                    if (document == null || !document.gameObject.scene.IsValid() ||
+                        !document.gameObject.activeInHierarchy) continue;
+                    VisualElement root = document.rootVisualElement;
+                    if (root == null || root.panel == null) continue;
+                    string sorting = document.panelSettings == null ? "none" :
+                        document.panelSettings.sortingOrder.ToString(CultureInfo.InvariantCulture);
+                    output.AppendLine("DOCUMENT " + document.gameObject.name +
+                        " sorting=" + sorting + " root=" + SafeString(root.name));
+
+                    var stack = new Stack<KeyValuePair<VisualElement, int>>();
+                    stack.Push(new KeyValuePair<VisualElement, int>(root, 0));
+                    while (stack.Count > 0 && remaining-- > 0 && shown < 220 &&
+                        output.Length < Limit)
+                    {
+                        var node = stack.Pop();
+                        VisualElement element = node.Key;
+                        if (element == null) continue;
+                        if (element.resolvedStyle.display == DisplayStyle.None ||
+                            element.resolvedStyle.visibility == UnityEngine.UIElements.Visibility.Hidden ||
+                            element.resolvedStyle.opacity <= .01f) continue;
+                        string name = element.name ?? "";
+                        string classes = string.Join(",", element.GetClasses().Take(8).ToArray());
+                        string label = (element as TextElement)?.text ?? "";
+                        string signal = name + " " + classes;
+                        bool hasKeyword = HasToken(signal, "notification", "toast", "popup",
+                            "banner", "reward", "achievement", "alert");
+                        Rect bounds;
+                        bool onScreen = GetScreenBounds(root, element, out bounds);
+                        bool nearQuests = onScreen &&
+                            bounds.xMax >= Screen.width * .72f &&
+                            bounds.yMin < Screen.height * .42f &&
+                            bounds.yMax >= 0f &&
+                            bounds.width > 8f && bounds.width < Screen.width * .85f &&
+                            bounds.height > 6f && bounds.height < Screen.height * .5f;
+                        // Include the top-right nodes even if their runtime
+                        // names are anonymous, and relevant named nodes anywhere.
+                        if (hasKeyword || nearQuests)
+                        {
+                            string rectText = onScreen
+                                ? bounds.x.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                  bounds.y.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                  bounds.width.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                  bounds.height.ToString("F0", CultureInfo.InvariantCulture)
+                                : "?";
+                            output.AppendLine("  UI depth=" + node.Value +
+                                " type=" + element.GetType().Name +
+                                " name=" + SafeString(name) +
+                                " classes=" + SafeString(classes) +
+                                " rect=" + rectText +
+                                " text=" + SafeString(label));
+                            shown++;
+                        }
+                        for (int i = element.childCount - 1; i >= 0; i--)
+                            stack.Push(new KeyValuePair<VisualElement, int>(
+                                element.ElementAt(i), node.Value + 1));
+                    }
+                }
+                output.AppendLine("UI nodes recorded: " + shown);
+            }
+            catch (Exception ex)
+            {
+                output.AppendLine("Notification UI snapshot failed: " + ex);
+            }
+            output.AppendLine();
+        }
+
+        private static bool GetScreenBounds(VisualElement root, VisualElement element,
+            out Rect bounds)
+        {
+            bounds = default(Rect);
+            Rect rootBounds = root.worldBound, elementBounds = element.worldBound;
+            if (rootBounds.width <= 0f || rootBounds.height <= 0f ||
+                elementBounds.width <= 0f || elementBounds.height <= 0f) return false;
+            float sx = Screen.width / rootBounds.width;
+            float sy = Screen.height / rootBounds.height;
+            bounds = new Rect((elementBounds.xMin - rootBounds.xMin) * sx,
+                (elementBounds.yMin - rootBounds.yMin) * sy,
+                elementBounds.width * sx, elementBounds.height * sy);
+            return !float.IsNaN(bounds.x) && !float.IsNaN(bounds.y);
+        }
+
+        private static string DescribeParents(Transform child)
+        {
+            var output = new List<string>(6);
+            for (int i = 0; child != null && i < 7; i++, child = child.parent)
+                output.Add(child.name);
+            return string.Join(" <- ", output.ToArray());
         }
 
         private static void AppendGameTypes(StringBuilder output)
