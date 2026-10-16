@@ -39,6 +39,7 @@ namespace StonewardsDailyQuestTracker
         private bool _wasConnected;
         private bool _missionWasOpen;
         private bool _autoCaptured;
+        private float _autoCaptureAfter;
         private float _lastDiagnosticTime = -100f;
         private float _statusUntil;
         private string _diagnosticStatus = "";
@@ -95,6 +96,7 @@ namespace StonewardsDailyQuestTracker
             _nextUpdate = 0f;
             _missionWasOpen = false;
             _autoCaptured = false;
+            _autoCaptureAfter = 0f;
         }
 
         private void TryExportDiagnostics(string trigger)
@@ -132,10 +134,19 @@ namespace StonewardsDailyQuestTracker
                 // a one-time action, not a recurring scan of game objects.
                 var menu = GlobalMissionMenu.Instance;
                 bool missionOpen = menu != null && menu.IsOpen;
-                if (missionOpen && !_missionWasOpen && !_autoCaptured && _autoDiagnostic.Value)
+                if (missionOpen && !_missionWasOpen && !_autoCaptured)
+                {
+                    // Give UI Toolkit time to populate the Daily tab before
+                    // inspecting its labels and progress bars.
+                    _autoCaptureAfter = Time.unscaledTime + .65f;
+                    _reader.ResetSession();
+                    _nextUpdate = 0f;
+                }
+                if (missionOpen && !_autoCaptured && _autoDiagnostic.Value &&
+                    Time.unscaledTime >= _autoCaptureAfter)
                 {
                     _autoCaptured = true;
-                    TryExportDiagnostics("Missions opened automatically");
+                    TryExportDiagnostics("Missions Daily UI automatic capture");
                 }
                 _missionWasOpen = missionOpen;
 
