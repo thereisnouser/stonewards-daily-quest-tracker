@@ -126,7 +126,7 @@ namespace StonewardsDailyQuestTracker
                         bool visible = true;
                         for (VisualElement e = element; e != null; e = e.parent)
                             if (e.resolvedStyle.display == DisplayStyle.None ||
-                                e.resolvedStyle.visibility == Visibility.Hidden ||
+                                e.resolvedStyle.visibility == UnityEngine.UIElements.Visibility.Hidden ||
                                 e.resolvedStyle.opacity <= .01f)
                                 visible = false;
                         if (visible)
