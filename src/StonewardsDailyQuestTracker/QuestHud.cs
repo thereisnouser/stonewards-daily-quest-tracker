@@ -16,6 +16,11 @@ namespace StonewardsDailyQuestTracker
         private const float ItemHeight = 62f;
         private const float FooterHeight = 20f;
         private const int MaxVisible = 5;
+        private const float ReferenceWidth = 1920f;
+        private const float ReferenceHeight = 1080f;
+        private const float EdgeMargin = 8f;
+        // Match PartyHUD's default multiplier and readability behavior.
+        private const float PanelSizeBoost = 0.95f;
 
         private static readonly Color GoldFrame = new Color(.72f, .64f, .48f, 1f);
         private static readonly Color MainFill = new Color(19f / 255f, 23f / 255f, 32f / 255f, .96f);
@@ -40,6 +45,7 @@ namespace StonewardsDailyQuestTracker
 
         public void Draw(List<QuestView> quests, PanelCorner anchor,
             int horizontalInset, int verticalInset, float requestedScale,
+            float readabilityScale, bool autoScaleToResolution,
             bool hideCompleted, bool showBars, bool showStatus)
         {
             if (_heading == null) InitializeStyles();
@@ -58,22 +64,48 @@ namespace StonewardsDailyQuestTracker
             float height = HeaderHeight + (empty ? 72f : visible * ItemHeight + 6f) +
                            (overflow > 0 ? FooterHeight : 0f);
 
-            float resolution = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
-            float factor = Mathf.Clamp(resolution * requestedScale, .35f, 2f);
-            factor = Mathf.Min(factor, (Screen.width - 12f) / Width,
-                (Screen.height - 12f) / height);
-            factor = Mathf.Max(.1f, factor);
+            // Mirror PartyHUD: clamp preference before multiplying by the
+            // resolution ratio. This allows proportional enlargement at 1440p/4K
+            // instead of capping the final (resolution-adjusted) GUI scale.
+            float baseScale = Mathf.Clamp(requestedScale *
+                Mathf.Clamp(readabilityScale, 1f, 1.4f) *
+                PanelSizeBoost, 0.55f, 1.8f);
+            float resolutionScale = autoScaleToResolution
+                ? Mathf.Min(Screen.width / ReferenceWidth,
+                    Screen.height / ReferenceHeight)
+                : 1f;
+            float factor = baseScale * resolutionScale;
+
+            // Offsets are physical screen pixels, independent of GUI.matrix.
+            // Reduce size only as needed to fit within the actual display.
+            factor = Mathf.Min(factor, (Screen.width - EdgeMargin * 2f) / Width,
+                (Screen.height - EdgeMargin * 2f) / height);
+
+            if (autoScaleToResolution)
+            {
+                // Respect the requested top/bottom reserved space when it fits.
+                // For an impossible offset (e.g. 1000 px on a 720 px screen),
+                // let the later position clamp win instead of collapsing the HUD.
+                float usableHeight = Screen.height -
+                    Mathf.Max(EdgeMargin, verticalInset) - EdgeMargin;
+                if (usableHeight >= 72f)
+                    factor = Mathf.Min(factor, usableHeight / height);
+            }
+            if (factor <= 0f)
+                return;
 
             float panelWidth = Width * factor;
             float panelHeight = height * factor;
             bool right = anchor == PanelCorner.TopRight || anchor == PanelCorner.BottomRight;
             bool bottom = anchor == PanelCorner.BottomRight || anchor == PanelCorner.BottomLeft;
-            float x = right ? Screen.width - Mathf.Max(6, horizontalInset) - panelWidth :
-                Mathf.Max(6, horizontalInset);
-            float y = bottom ? Screen.height - Mathf.Max(6, verticalInset) - panelHeight :
-                Mathf.Max(6, verticalInset);
-            x = Mathf.Clamp(x, 6f, Mathf.Max(6f, Screen.width - panelWidth - 6f));
-            y = Mathf.Clamp(y, 6f, Mathf.Max(6f, Screen.height - panelHeight - 6f));
+            float x = right ? Screen.width - Mathf.Max(EdgeMargin, horizontalInset) - panelWidth :
+                Mathf.Max(EdgeMargin, horizontalInset);
+            float y = bottom ? Screen.height - Mathf.Max(EdgeMargin, verticalInset) - panelHeight :
+                Mathf.Max(EdgeMargin, verticalInset);
+            // Apply physical-pixel bounds after scaling. This keeps all four
+            // anchors visible even on non-16:9 and very small screens.
+            x = Mathf.Clamp(x, EdgeMargin, Screen.width - panelWidth - EdgeMargin);
+            y = Mathf.Clamp(y, EdgeMargin, Screen.height - panelHeight - EdgeMargin);
 
             Matrix4x4 matrix = GUI.matrix;
             Color guiColor = GUI.color;
