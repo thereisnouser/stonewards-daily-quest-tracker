@@ -2,6 +2,7 @@
 
 ## 0.1.2 (testing)
 
+- Restored the original stepped gold frame and burgundy header in the native UI Toolkit quest panel.
 - Keep the remaining-quest counter based on the game's total daily quest count, even when completed quests disappear from the active list (e.g. 4/5 LEFT).
 - Fix native HUD draw order so the quest panel remains visible rather than being placed behind full-screen game HUD elements.
 - Keep a legacy OnGUI fallback if the native overlay stops repainting.
