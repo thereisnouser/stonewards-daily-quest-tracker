@@ -1,37 +1,34 @@
 # Stonewards Daily Quest Tracker
 
-Client-side BepInEx 5 mod for Stonewards that displays **the currently selected daily quests and their live progress** during a match.
+Lightweight client-side **Stonewards** BepInEx 5 mod that displays the **five currently selected daily quests and their live progress** during a match.
 
-## Version 0.2.1 — PartyHUD-style adaptive layout
+## v0.2.2 — compact text-only HUD
 
-The tracker now uses the same resolution scaling model as PartyHUD, with a **1920×1080 reference**:
+The panel now shows one quest per line with its numeric `current/target` progress on the right. **No progress bars.** Completed objectives are highlighted in green, titles are width-fitted to avoid counter overlap, and the compact panel retains the in-game burgundy/gold design. It is roughly half as tall as the old five-quest layout.
 
-- `Appearance.AutoScaleToResolution = true` (default): scale proportionally with the display, using the smaller of width/1920 and height/1080. This handles 1080p, 1440p, 4K, ultrawide and non-16:9 displays.
-- `Appearance.Scale = 1.0` (manual multiplier) and `Appearance.ReadabilityScale = 1.12` (additional readability multiplier) behave like PartyHUD. Base preferences are clamped *before* resolution adaptation, so 4K can render larger than 1.8x.
-- `Appearance.Anchor = TopRight` by default; `TopLeft`, `BottomRight` and `BottomLeft` work with the same scaling model.
-- `Appearance.HorizontalOffset` and `Appearance.VerticalOffset` are **physical screen pixels**, not scaled GUI units. The complete panel is fitted and clamped within display boundaries, taking reserved vertical space into account.
-- Set `AutoScaleToResolution = false` for a fixed physical-pixel size (still limited by the screen boundaries).
+Quest progress comes directly from `QuestManager.CurrentDailyQuests` paired with `QuestManager.runtimeMissions` (`missionType = DAILY`), not from a quest database or inferred gameplay events. Regular updates only inspect these small live collections; they do not perform scene-wide scans.
 
-Existing `Scale`, `Anchor` and offset settings are retained during the update. This release only changes panel geometry; the quest reader and game-state tracking remain unchanged.
+### Controls
 
-## Version 0.2.0 — first direct game-data implementation (test build)
+- `F6`: show/hide the panel
+- `F9`: export a diagnostic report manually (not necessary for normal gameplay)
 
-Version 0.1.x used broad reflection and accidentally displayed quest templates instead of live objectives. After inspecting an actual Stonewards 0.2.3 diagnostic snapshot, the tracker now uses the exact game state:
+### Appearance and configuration
 
-- `QuestManager.Instance.CurrentDailyQuests` is the authoritative list of today's five selected `QuestSO` objectives (not the full quest database).
-- `QuestManager.runtimeMissions` contains the active mission objects, including the `DAILY` entries. Each selected quest is paired with its runtime mission by `QuestSO` identity or ID.
-- Each `RuntimeMission` provides the live `currentValue` and `target` counters, plus `Description`, `Title` and completion state. `QuestManager.IsQuestCompleted` is also consulted.
-- The panel reads only these small lists at the configured refresh interval. No `FindObjectsOfTypeAll` or full type/member graph traversal occurs during normal gameplay.
+Settings are stored in `BepInEx/config/community.stonewards.dailyquesttracker.cfg`.
 
-This mapping comes from the game's diagnostic information rather than guessed field names. The direct game-data implementation was validated in-game by the mod's tester. Adaptive geometry in v0.2.1 still requires a visual check on target resolutions.
+- `Appearance.Anchor`: `TopRight`, `TopLeft`, `BottomRight` or `BottomLeft`
+- `Appearance.HorizontalOffset` / `Appearance.VerticalOffset`: offset in actual screen pixels
+- `Appearance.Scale` (default `1.0`): manual size multiplier
+- `Appearance.ReadabilityScale` (default `1.12`): additional size multiplier
+- `Appearance.AutoScaleToResolution` (default `true`): use PartyHUD-style proportional scaling relative to 1920×1080, fitting to screen bounds
+- `General.Enabled`, `General.HideCompleted`, `General.RefreshSeconds`, `General.ShowMissingQuestData`
 
-The compact panel uses the Stonewards / PartyHUD burgundy-and-gold visual language and displays up to five selected quests, progress bars, completion indicators, and live counters.
+The previous `Appearance.ShowProgressBars` entry is **no longer used**. Existing config files can retain that obsolete key without affecting the text-only layout. Manual scale, anchor and offset values from earlier versions are preserved.
 
-## Installation
+### Build and install
 
-Requires Stonewards 0.2.3, BepInEx 5, r2modman and a .NET SDK. The build script compiles against the copies of the game's assemblies installed locally; game assets or proprietary DLLs are not bundled.
-
-Open PowerShell in the cloned repository:
+Requirements: Stonewards 0.2.3, BepInEx 5 via r2modman, and .NET SDK. Run PowerShell from the cloned repository:
 
 ```powershell
 git pull
@@ -41,27 +38,13 @@ powershell -ExecutionPolicy Bypass -File .\build-and-install.ps1 `
   -ProfileDir "C:\Users\user\AppData\Roaming\r2modmanPlus-local\Stonewards\profiles\stonewards-daily-quest-tracker"
 ```
 
-The profile must already exist. Run the game from the same profile after building.
+The named profile must already exist. The script builds against installed game assemblies and installs the resulting DLL to that profile; no game assets or proprietary DLLs are included in this repository.
 
-## Controls and configuration
+### Sources
 
-- **F6** toggles the tracker panel.
-- **F9** manually exports quest diagnostics (only when troubleshooting). The fallback IMGUI shortcut is supported.
-- `Appearance.Anchor`, `HorizontalOffset`, `VerticalOffset`, `Scale`, `ReadabilityScale`, `AutoScaleToResolution`, and `ShowProgressBars` control panel appearance.
-- `General.Enabled`, `HideCompleted`, `RefreshSeconds`, and `ShowMissingQuestData` control display and refresh.
+- `DailyQuestTrackerPlugin.cs`: BepInEx lifecycle, hotkeys, configuration and visibility
+- `DailyQuestReader.cs`: direct read-only daily mission data access
+- `QuestHud.cs`: compact resolution-aware text overlay
+- `QuestDiagnostics.cs`: optional one-shot quest API report
 
-Configuration is saved to `BepInEx/config/community.stonewards.dailyquesttracker.cfg`. Existing settings from older versions persist; check `Appearance.VerticalOffset` if the panel is not in your preferred location.
-
-**Automatic diagnostic capture on opening Missions has been removed** in v0.2.0 to avoid costly one-shot scans during ordinary gameplay. The previous `Diagnostics.AutoCaptureWhenMissionsOpened` setting is ignored and can be removed from old config files. F9 remains an explicit, optional debugging action; its report is saved to `BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt`.
-
-The overlay is read-only: it sends no network messages, alters no quest state or save files, and does not intercept the mouse. It hides automatically in normal game menus and when no gameplay session is active.
-
-## Source layout
-
-- `src/StonewardsDailyQuestTracker/DailyQuestTrackerPlugin.cs`: plugin lifecycle, configurable HUD and hotkeys
-- `src/StonewardsDailyQuestTracker/DailyQuestReader.cs`: precise read-only mapping to today's live daily mission state
-- `src/StonewardsDailyQuestTracker/QuestHud.cs`: standalone PartyHUD-inspired overlay
-- `src/StonewardsDailyQuestTracker/QuestDiagnostics.cs`: optional one-shot API/UI report, used only with F9
-- `build-and-install.ps1`: .NET build and r2modman installation script
-
-No copyrighted game textures, fonts or DLLs are included.
+The mod reads game state but does not modify quests, saves or networking. **v0.2.2 still requires a build and in-game visual check.**
