@@ -4,153 +4,237 @@ using UnityEngine;
 
 namespace StonewardsDailyQuestTracker
 {
-    /// <summary>A purely visual overlay. Uses no raycast targets and never changes game input state.</summary>
+    /// <summary>
+    /// Read-only, non-interactive in-game HUD. Stonewards/Party HUD colors,
+    /// stepped borders, generous typography and room for only active quests.
+    /// No runtime font searches or UI-object creation on each repaint.
+    /// </summary>
     internal sealed class QuestHud
     {
-        private const float Width = 304f;
-        private const float HeaderHeight = 38f;
-        private const float RowHeight = 57f;
-        private static readonly Color Frame = new Color(.72f, .64f, .48f, 1);
-        private static readonly Color Fill = new Color(19f / 255, 23f / 255, 32f / 255, .94f);
-        private static readonly Color Header = new Color(76f / 255, 46f / 255, 48f / 255, 1);
-        private static readonly Color Gold = new Color(.98f, .79f, .51f, 1);
-        private static readonly Color Foreground = new Color(.98f, .90f, .76f, 1);
-        private static readonly Color Dim = new Color(.68f, .68f, .67f, 1);
-        private static readonly Color Green = new Color(.47f, .87f, .56f, 1);
-        private static readonly Color Track = new Color(.16f, .18f, .20f, 1);
+        private const float Width = 338f;
+        private const float HeaderHeight = 44f;
+        private const float ItemHeight = 62f;
+        private const float FooterHeight = 20f;
+        private const int MaxVisible = 5;
+
+        private static readonly Color GoldFrame = new Color(.72f, .64f, .48f, 1f);
+        private static readonly Color MainFill = new Color(19f / 255f, 23f / 255f, 32f / 255f, .96f);
+        private static readonly Color HeaderFill = new Color(76f / 255f, 46f / 255f, 48f / 255f, 1f);
+        private static readonly Color GoldText = new Color(.98f, .79f, .51f, 1f);
+        private static readonly Color PrimaryText = new Color(.98f, .90f, .76f, 1f);
+        private static readonly Color SecondaryText = new Color(.76f, .76f, .73f, 1f);
+        private static readonly Color Success = new Color(.47f, .87f, .56f, 1f);
+        private static readonly Color RowDivider = new Color(.71f, .63f, .48f, .27f);
+        private static readonly Color Track = new Color(.12f, .15f, .19f, 1f);
+        private static readonly Color TrackBorder = new Color(.36f, .35f, .31f, .9f);
+
         private GUIStyle _heading;
-        private GUIStyle _title;
-        private GUIStyle _progress;
-        private GUIStyle _hint;
+        private GUIStyle _rowTitle;
+        private GUIStyle _rowDone;
+        private GUIStyle _rowCounter;
+        private GUIStyle _rowCounterDone;
+        private GUIStyle _subtle;
+        private GUIStyle _emptyTitle;
+        private GUIStyle _emptyInfo;
         private Font _font;
-        private float _fontRetry;
 
-        public void Draw(List<QuestView> quests, PanelCorner anchor, int horizontalInset,
-            int verticalInset, float scale, bool hideCompleted, bool showBars, bool showStatus)
+        public void Draw(List<QuestView> quests, PanelCorner anchor,
+            int horizontalInset, int verticalInset, float requestedScale,
+            bool hideCompleted, bool showBars, bool showStatus)
         {
-            if (_heading == null || (_font == null && Time.unscaledTime > _fontRetry))
-                InitStyles();
+            if (_heading == null) InitializeStyles();
 
-            var visible = new List<QuestView>(quests.Count);
+            // This is only a tiny cached list of live quest states, never an
+            // enumeration of the game's database assets.
+            int matching = 0;
             for (int i = 0; i < quests.Count; i++)
                 if (!hideCompleted || !quests[i].Completed)
-                    visible.Add(quests[i]);
-            if (visible.Count > 8)
-                visible.RemoveRange(8, visible.Count - 8);
-            bool showEmpty = visible.Count == 0;
-            if (showEmpty && !showStatus && quests.Count == 0)
-                return;
+                    matching++;
 
-            float height = HeaderHeight + (showEmpty ? 42f : visible.Count * RowHeight) + 8f;
-            float baseScale = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
-            float factor = Mathf.Clamp(baseScale * scale, .35f, 2.0f);
-            factor = Mathf.Min(factor, (Screen.width - 12f) / Width, (Screen.height - 12f) / height);
+            bool empty = matching == 0;
+            if (empty && quests.Count == 0 && !showStatus) return;
+            int visible = Math.Min(matching, MaxVisible);
+            int overflow = Math.Max(0, matching - visible);
+            float height = HeaderHeight + (empty ? 72f : visible * ItemHeight + 6f) +
+                           (overflow > 0 ? FooterHeight : 0f);
+
+            float resolution = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
+            float factor = Mathf.Clamp(resolution * requestedScale, .35f, 2f);
+            factor = Mathf.Min(factor, (Screen.width - 12f) / Width,
+                (Screen.height - 12f) / height);
             factor = Mathf.Max(.1f, factor);
-            float sw = Width * factor, sh = height * factor;
-            float x = anchor == PanelCorner.TopRight || anchor == PanelCorner.BottomRight
-                ? Screen.width - Mathf.Max(6, horizontalInset) - sw
-                : Mathf.Max(6, horizontalInset);
-            float y = anchor == PanelCorner.BottomRight || anchor == PanelCorner.BottomLeft
-                ? Screen.height - Mathf.Max(6, verticalInset) - sh
-                : Mathf.Max(6, verticalInset);
-            x = Mathf.Clamp(x, 6, Mathf.Max(6, Screen.width - sw - 6));
-            y = Mathf.Clamp(y, 6, Mathf.Max(6, Screen.height - sh - 6));
 
-            Matrix4x4 oldMatrix = GUI.matrix;
-            var oldColor = GUI.color;
+            float panelWidth = Width * factor;
+            float panelHeight = height * factor;
+            bool right = anchor == PanelCorner.TopRight || anchor == PanelCorner.BottomRight;
+            bool bottom = anchor == PanelCorner.BottomRight || anchor == PanelCorner.BottomLeft;
+            float x = right ? Screen.width - Mathf.Max(6, horizontalInset) - panelWidth :
+                Mathf.Max(6, horizontalInset);
+            float y = bottom ? Screen.height - Mathf.Max(6, verticalInset) - panelHeight :
+                Mathf.Max(6, verticalInset);
+            x = Mathf.Clamp(x, 6f, Mathf.Max(6f, Screen.width - panelWidth - 6f));
+            y = Mathf.Clamp(y, 6f, Mathf.Max(6f, Screen.height - panelHeight - 6f));
+
+            Matrix4x4 matrix = GUI.matrix;
+            Color guiColor = GUI.color;
             try
             {
-                GUI.matrix = Matrix4x4.TRS(new Vector3(x, y, 0), Quaternion.identity,
-                    new Vector3(factor, factor, 1));
-                Rect(7, 0, Width - 14, height, Fill);
-                Rect(0, 7, Width, height - 14, Fill);
-                Rect(7, 2, Width - 14, HeaderHeight - 2, Header);
-                Rect(2, 7, Width - 4, HeaderHeight - 7, Header);
-                Border(Width, height);
-                Rect(2, HeaderHeight - 1, Width - 4, 1, Frame);
-                GUI.Label(new Rect(14, 4, 230, 31), "DAILY QUESTS", _heading);
-                GUI.Label(new Rect(252, 7, 36, 24), quests.Count.ToString(), _progress);
+                GUI.matrix = Matrix4x4.TRS(new Vector3(x, y, 0f),
+                    Quaternion.identity, new Vector3(factor, factor, 1f));
+                DrawBackground(height);
+                GUI.Label(new Rect(16, 5, Width - 128, 34), "DAILY QUESTS", _heading);
+                GUI.Label(new Rect(Width - 103, 7, 85, 30),
+                    empty ? "TRACKER" : matching + " ACTIVE", _rowCounter);
 
-                if (showEmpty)
+                if (empty)
                 {
-                    GUI.Label(new Rect(15, HeaderHeight + 6, Width - 30, 30),
-                        quests.Count == 0 ? "QUEST DATA NOT DETECTED  [F9]" : "ALL VISIBLE QUESTS COMPLETE", _hint);
+                    bool noSource = quests.Count == 0;
+                    GUI.Label(new Rect(18, HeaderHeight + 11, Width - 36, 28),
+                        noSource ? "QUEST PROGRESS NOT DETECTED" : "ALL QUESTS COMPLETED",
+                        _emptyTitle);
+                    GUI.Label(new Rect(18, HeaderHeight + 40, Width - 36, 22),
+                        noSource ? "Press F9 to export quest diagnostics" :
+                            "Completed quests are hidden", _emptyInfo);
+                    return;
                 }
-                for (int i = 0; i < visible.Count; i++)
+
+                int row = 0;
+                for (int i = 0; i < quests.Count && row < MaxVisible; i++)
                 {
-                    QuestView quest = visible[i];
-                    float ry = HeaderHeight + 4 + i * RowHeight;
-                    if (i != 0) Rect(12, ry - 4, Width - 24, 1, new Color(.71f, .63f, .48f, .30f));
-                    Rect(10, ry + 6, 3, 32, quest.Completed ? Green : Gold);
-                    GUI.Label(new Rect(20, ry, 209, 28), Shorten(quest.Title, 30), quest.Completed ? _hint : _title);
-                    string value = quest.Progress.HasValue && quest.Target.HasValue && quest.Target.Value > 0
-                        ? Math.Min(quest.Progress.Value, quest.Target.Value) + "/" + quest.Target.Value
-                        : quest.Completed ? "DONE" : "—";
-                    GUI.Label(new Rect(232, ry + 1, 58, 27), value, quest.Completed ? _hint : _progress);
-                    if (showBars)
-                    {
-                        Rect(20, ry + 31, Width - 40, 7, Track);
-                        float fraction = quest.Completed ? 1 : quest.Progress.HasValue && quest.Target.HasValue && quest.Target.Value > 0
-                            ? Mathf.Clamp01((float)quest.Progress.Value / quest.Target.Value) : 0;
-                        if (fraction > 0)
-                            Rect(20, ry + 31, (Width - 40) * fraction, 7, quest.Completed ? Green : Gold);
-                    }
+                    QuestView q = quests[i];
+                    if (hideCompleted && q.Completed) continue;
+                    DrawRow(q, HeaderHeight + 4f + row * ItemHeight, showBars);
+                    row++;
+                }
+                if (overflow > 0)
+                {
+                    float footerY = HeaderHeight + 5f + visible * ItemHeight;
+                    DrawRect(15, footerY, Width - 30, 1, RowDivider);
+                    GUI.Label(new Rect(18, footerY + 2, Width - 36, 16),
+                        "+ " + overflow + " MORE QUESTS", _subtle);
                 }
             }
-            finally { GUI.matrix = oldMatrix; GUI.color = oldColor; }
+            finally
+            {
+                GUI.matrix = matrix;
+                GUI.color = guiColor;
+            }
         }
 
-        private void InitStyles()
+        private void DrawBackground(float height)
         {
+            // Native stepped silhouette and burgundy title bar.
+            DrawRect(7, 0, Width - 14, height, MainFill);
+            DrawRect(0, 7, Width, height - 14, MainFill);
+            DrawRect(7, 2, Width - 14, HeaderHeight - 2, HeaderFill);
+            DrawRect(2, 7, Width - 4, HeaderHeight - 7, HeaderFill);
+            DrawFrame(Width, height);
+            DrawRect(2, HeaderHeight - 1, Width - 4, 1, GoldFrame);
+            DrawRect(10, HeaderHeight - 5, 65, 2, GoldText);
+        }
+
+        private void DrawRow(QuestView q, float y, bool showBar)
+        {
+            DrawRect(13, y + 7, 3, 35, q.Completed ? Success : GoldText);
+            GUI.Label(new Rect(24, y + 1, Width - 122, 28),
+                Shorten(q.Title, 37), q.Completed ? _rowDone : _rowTitle);
+
+            string counter = q.Completed ? "DONE" : q.Progress.HasValue && q.Target.HasValue
+                ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value : "—";
+            GUI.Label(new Rect(Width - 104, y + 1, 89, 28),
+                counter, q.Completed ? _rowCounterDone : _rowCounter);
+
+            if (showBar)
+            {
+                const float barWidth = Width - 49f;
+                DrawRect(24, y + 35, barWidth, 9, TrackBorder);
+                DrawRect(25, y + 36, barWidth - 2f, 7, Track);
+                float percent = q.Completed ? 1f :
+                    q.Progress.HasValue && q.Target.HasValue && q.Target.Value > 0
+                        ? Mathf.Clamp01((float)q.Progress.Value / q.Target.Value) : 0f;
+                if (percent > 0f)
+                    DrawRect(25, y + 36, (barWidth - 2f) * percent, 7,
+                        q.Completed ? Success : GoldText);
+            }
+            DrawRect(14, y + ItemHeight - 4f, Width - 28, 1, RowDivider);
+        }
+
+        private void InitializeStyles()
+        {
+            // Font discovery exactly once; the old HUD repeatedly searched
+            // every Unity Font object when a native font wasn't available.
+            foreach (Font candidate in Resources.FindObjectsOfTypeAll<Font>())
+            {
+                if (candidate == null) continue;
+                if (candidate.name == "Jersey10-Regular")
+                {
+                    _font = candidate;
+                    break;
+                }
+                if (_font == null && candidate.name == "Jersey10-Regular2")
+                    _font = candidate;
+            }
             if (_font == null)
             {
-                foreach (var f in Resources.FindObjectsOfTypeAll<Font>())
-                    if (f != null && (f.name == "Jersey10-Regular" || f.name == "Jersey10-Regular2"))
-                    { _font = f; break; }
-                if (_font == null)
-                {
-                    try { _font = Resources.GetBuiltinResource<Font>("Arial.ttf"); } catch { }
-                    _fontRetry = Time.unscaledTime + 4f;
-                }
+                try { _font = Resources.GetBuiltinResource<Font>("Arial.ttf"); }
+                catch (Exception) { }
             }
-            _heading = Style(21, Gold, TextAnchor.MiddleLeft);
-            _title = Style(17, Foreground, TextAnchor.MiddleLeft);
-            _progress = Style(17, Gold, TextAnchor.MiddleRight);
-            _hint = Style(14, Dim, TextAnchor.MiddleLeft);
+
+            _heading = MakeStyle(22, GoldText, TextAnchor.MiddleLeft);
+            _rowTitle = MakeStyle(19, PrimaryText, TextAnchor.MiddleLeft);
+            _rowDone = MakeStyle(19, Success, TextAnchor.MiddleLeft);
+            _rowCounter = MakeStyle(17, GoldText, TextAnchor.MiddleRight);
+            _rowCounterDone = MakeStyle(17, Success, TextAnchor.MiddleRight);
+            _subtle = MakeStyle(14, SecondaryText, TextAnchor.MiddleCenter);
+            _emptyTitle = MakeStyle(18, PrimaryText, TextAnchor.MiddleCenter);
+            _emptyInfo = MakeStyle(15, SecondaryText, TextAnchor.MiddleCenter);
         }
 
-        private GUIStyle Style(int size, Color color, TextAnchor align)
+        private GUIStyle MakeStyle(int fontSize, Color color, TextAnchor alignment)
         {
-            var s = new GUIStyle(GUI.skin.label);
-            s.font = _font;
-            s.fontSize = size;
-            s.fontStyle = _font != null && _font.name.StartsWith("Jersey10", StringComparison.OrdinalIgnoreCase)
+            GUIStyle style = new GUIStyle(GUI.skin.label);
+            style.font = _font;
+            style.fontSize = fontSize;
+            style.fontStyle = _font != null &&
+                _font.name.StartsWith("Jersey10", StringComparison.OrdinalIgnoreCase)
                 ? FontStyle.Normal : FontStyle.Bold;
-            s.normal.textColor = color;
-            s.alignment = align;
-            s.clipping = TextClipping.Clip;
-            s.wordWrap = false;
-            s.padding = new RectOffset(0, 0, 0, 0);
-            return s;
+            style.normal.textColor = color;
+            style.alignment = alignment;
+            style.wordWrap = false;
+            style.clipping = TextClipping.Clip;
+            style.padding = new RectOffset(0, 0, 0, 0);
+            return style;
         }
 
-        private static string Shorten(string s, int max) => string.IsNullOrEmpty(s) ? "DAILY QUEST" : s.Length > max ? s.Substring(0, max - 1) + "…" : s;
-        private static void Rect(float x, float y, float w, float h, Color color)
+        private static string Shorten(string text, int count)
         {
-            Color previous = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(new Rect(x, y, Mathf.Max(0, w), Mathf.Max(0, h)), Texture2D.whiteTexture);
-            GUI.color = previous;
+            if (string.IsNullOrEmpty(text)) return "Daily quest";
+            return text.Length > count ? text.Substring(0, count - 1) + "…" : text;
         }
-        private static void Border(float width, float height)
+
+        private static void DrawRect(float x, float y, float w, float h, Color color)
         {
-            Rect(8, 0, width - 16, 2, Frame);
-            Rect(5, 2, 3, 2, Frame); Rect(2, 5, 3, 2, Frame);
-            Rect(width - 8, 2, 3, 2, Frame); Rect(width - 5, 5, 3, 2, Frame);
-            Rect(0, 7, 2, height - 14, Frame); Rect(width - 2, 7, 2, height - 14, Frame);
-            Rect(8, height - 2, width - 16, 2, Frame);
-            Rect(5, height - 4, 3, 2, Frame); Rect(2, height - 7, 3, 2, Frame);
-            Rect(width - 8, height - 4, 3, 2, Frame); Rect(width - 5, height - 7, 3, 2, Frame);
+            Color old = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(new Rect(x, y, Mathf.Max(0, w), Mathf.Max(0, h)),
+                Texture2D.whiteTexture);
+            GUI.color = old;
+        }
+
+        private static void DrawFrame(float width, float height)
+        {
+            DrawRect(8, 0, width - 16, 2, GoldFrame);
+            DrawRect(5, 2, 3, 2, GoldFrame);
+            DrawRect(2, 5, 3, 2, GoldFrame);
+            DrawRect(width - 8, 2, 3, 2, GoldFrame);
+            DrawRect(width - 5, 5, 3, 2, GoldFrame);
+            DrawRect(0, 7, 2, height - 14, GoldFrame);
+            DrawRect(width - 2, 7, 2, height - 14, GoldFrame);
+            DrawRect(8, height - 2, width - 16, 2, GoldFrame);
+            DrawRect(5, height - 4, 3, 2, GoldFrame);
+            DrawRect(2, height - 7, 3, 2, GoldFrame);
+            DrawRect(width - 8, height - 4, 3, 2, GoldFrame);
+            DrawRect(width - 5, height - 7, 3, 2, GoldFrame);
         }
     }
 }
