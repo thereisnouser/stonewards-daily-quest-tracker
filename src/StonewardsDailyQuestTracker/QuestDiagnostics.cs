@@ -236,7 +236,7 @@ namespace StonewardsDailyQuestTracker
             {
                 FieldInfo[] fields;
                 try { fields = type.GetFields(Flags | BindingFlags.DeclaredOnly); }
-                catch { yield break; }
+                catch { fields = new FieldInfo[0]; }
                 foreach (FieldInfo field in fields)
                     yield return field;
                 type = type.BaseType;
