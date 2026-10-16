@@ -16,10 +16,10 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.2.3";
+        public const string Version = "0.2.4";
 
         private ConfigEntry<bool> _enabled;
-        private ConfigEntry<bool> _hideCompleted;
+        private ConfigEntry<CompletedQuestMode> _completedQuestMode;
         private ConfigEntry<bool> _showMissingDataNotice;
         private ConfigEntry<PanelCorner> _corner;
         private ConfigEntry<int> _xOffset;
@@ -54,7 +54,10 @@ namespace StonewardsDailyQuestTracker
         private void Awake()
         {
             _enabled = Config.Bind("General", "Enabled", true, "Enable Daily Quest Tracker.");
-            _hideCompleted = Config.Bind("General", "HideCompleted", false, "Hide completed daily quests.");
+            _completedQuestMode = Config.Bind("General", "CompletedQuestMode",
+                CompletedQuestMode.Hide,
+                "Hide completed daily quests (Hide), or keep them at the bottom " +
+                "with a green checkmark (Mark). The old HideCompleted setting is ignored.");
             _showMissingDataNotice = Config.Bind("General", "ShowMissingQuestData", true,
                 "Show a compact warning if the game has not initialized active daily quests.");
             _corner = Config.Bind("Appearance", "Anchor", PanelCorner.TopRight, "Panel screen corner.");
@@ -86,7 +89,7 @@ namespace StonewardsDailyQuestTracker
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
-            Logger.LogInfo("Daily Quest Tracker v0.2.3 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            Logger.LogInfo("Daily Quest Tracker v0.2.4 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -210,7 +213,7 @@ namespace StonewardsDailyQuestTracker
                 _currencyAnchor.TryGetBadgeBounds(out badge) ? (Rect?)badge : null;
             _hud.Draw(_quests, _corner.Value, _xOffset.Value, _yOffset.Value,
                 _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
-                _hideCompleted.Value, _showMissingDataNotice.Value,
+                _completedQuestMode.Value, _showMissingDataNotice.Value,
                 currencyBounds, _currencyGap.Value);
         }
 
@@ -258,6 +261,7 @@ namespace StonewardsDailyQuestTracker
     }
 
     internal enum PanelCorner { TopRight, TopLeft, BottomRight, BottomLeft }
+    internal enum CompletedQuestMode { Hide, Mark }
     internal sealed class QuestView
     {
         public string Id;
