@@ -7,6 +7,7 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
+using UnityEngine.SceneManagement;
 
 namespace StonewardsDailyQuestTracker
 {
@@ -34,6 +35,7 @@ namespace StonewardsDailyQuestTracker
         private float _nextUpdate;
         private float _nextError;
         private bool _visible = true;
+        private bool _wasConnected;
 
         private static readonly FieldInfo InventoryRoot =
             typeof(InventoryScreen).GetField("inventoryScreen", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -47,16 +49,16 @@ namespace StonewardsDailyQuestTracker
             _enabled = Config.Bind("General", "Enabled", true, "Enable Daily Quest Tracker.");
             _hideCompleted = Config.Bind("General", "HideCompleted", false, "Hide completed daily quests.");
             _showBars = Config.Bind("Appearance", "ShowProgressBars", true, "Draw a small progress bar below each objective.");
-            _showMissingDataNotice = Config.Bind("General", "ShowDiscoveryStatus", false,
+            _showMissingDataNotice = Config.Bind("General", "ShowDiscoveryStatus", true,
                 "Show a status panel when the game quest API could not be recognized. The default is to show nothing.");
             _corner = Config.Bind("Appearance", "Anchor", PanelCorner.TopRight, "Panel screen corner.");
             _xOffset = Config.Bind("Appearance", "HorizontalOffset", 18, "Horizontal edge inset in actual pixels.");
-            _yOffset = Config.Bind("Appearance", "VerticalOffset", 335,
+            _yOffset = Config.Bind("Appearance", "VerticalOffset", 240,
                 "Vertical edge inset in actual pixels. Top-right default avoids the gold and Bell Control panels.");
             _scale = Config.Bind("Appearance", "Scale", 1.0f,
                 new ConfigDescription("Scale, relative to the 1920x1080 reference resolution.",
                     new AcceptableValueRange<float>(0.65f, 1.5f)));
-            _refresh = Config.Bind("General", "RefreshSeconds", 0.8f,
+            _refresh = Config.Bind("General", "RefreshSeconds", 1.25f,
                 new ConfigDescription("How often to read actual quest progress (unscaled seconds).",
                     new AcceptableValueRange<float>(0.3f, 5f)));
             _toggleKey = Config.Bind("Hotkeys", "TogglePanel", Key.F6, "Toggle quest panel.");
@@ -66,6 +68,23 @@ namespace StonewardsDailyQuestTracker
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             Logger.LogInfo("Daily Quest Tracker loaded (F6: panel, F9: quest diagnostics). Progress is read only from game state.");
+        }
+
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (_reader != null) _reader.ResetSession();
+            _quests.Clear();
+            _nextUpdate = 0f;
         }
 
         private void Update()
@@ -84,6 +103,23 @@ namespace StonewardsDailyQuestTracker
                     }
                 }
 
+                bool connected = NetworkClient.active;
+                if (!connected)
+                {
+                    if (_wasConnected)
+                    {
+                        _reader.ResetSession();
+                        _quests.Clear();
+                    }
+                    _wasConnected = false;
+                    return;
+                }
+                if (!_wasConnected)
+                {
+                    _reader.ResetSession();
+                    _wasConnected = true;
+                    _nextUpdate = 0f;
+                }
                 if (Time.unscaledTime < _nextUpdate)
                     return;
                 _nextUpdate = Time.unscaledTime + _refresh.Value;
