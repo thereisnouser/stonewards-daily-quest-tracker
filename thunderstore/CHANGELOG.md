@@ -1,12 +1,12 @@
 # Changelog
 
-## 0.2.4
+## 0.1.0 — Initial public release
 
-- Added completed quest behavior: hide finished quests or mark them with a green check.
-- Show remaining/total daily quest count in the header.
-- Kept the compact text-only HUD and live progress values.
-- Added relative positioning beneath the currency HUD, with a manual fallback.
-- Improved adaptive scaling for different screen resolutions.
-- Improved performance by reading live quest state without recurring scene-wide scans.
-
-Initial Thunderstore release candidate.
+- Show all current daily missions with their real-time progress directly during a match.
+- Display a compact, text-only HUD styled to fit Stonewards.
+- Automatically hide completed quests or mark them with green checkmarks.
+- Show remaining/total daily quest counts and a completion message.
+- Position the panel beneath the coin HUD when detected, with configurable fallback offsets.
+- Support adaptive scaling across different screen resolutions.
+- Include configurable visibility, size, hotkeys and refresh interval.
+- Keep the mod client-side and read-only, without modifying saves or quest progress.

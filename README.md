@@ -11,7 +11,7 @@
 [![Stonewards](https://img.shields.io/badge/Game-Stonewards-7e3740)](https://thunderstore.io/c/stonewards/)
 [![BepInEx 5](https://img.shields.io/badge/Loader-BepInEx%205-233952)](https://thunderstore.io/c/stonewards/p/BepInEx/BepInExPack/)
 [![Thunderstore](https://img.shields.io/badge/Thunderstore-DailyQuestTracker-d3ad65)](https://thunderstore.io/c/stonewards/)
-![Version](https://img.shields.io/badge/Version-0.2.4-d2b471)
+![Version](https://img.shields.io/badge/Version-0.1.0-d2b471)
 
 ## Why use it?
 

@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.2.4";
+        public const string Version = "0.1.0";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<CompletedQuestMode> _completedQuestMode;
@@ -89,7 +89,7 @@ namespace StonewardsDailyQuestTracker
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
-            Logger.LogInfo("Daily Quest Tracker v0.2.4 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            Logger.LogInfo("Daily Quest Tracker v0.1.0 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
