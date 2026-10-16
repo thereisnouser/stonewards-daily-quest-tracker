@@ -2,6 +2,14 @@
 
 Lightweight client-side **Stonewards** BepInEx 5 mod that displays the **five currently selected daily quests and their live progress** during a match.
 
+## v0.2.3 — optional positioning relative to the currency HUD (test build)
+
+When the panel is anchored at `TopRight`, `Appearance.AnchorToCurrencyHud = true` (default) attempts to locate the **visible in-game currency badge** and aligns the quest panel's right edge with the badge's right edge. The quest panel is placed directly **below** the badge, separated by `Appearance.CurrencyGap = 10` physical pixels (configurable 0–50).
+
+The game currency UI has not yet been mapped to an exact public component. Detection currently uses a **bounded, best-effort read-only lookup** of visible numeric UI Toolkit labels near the top-right of the display. The search runs **at most twice per scene**; once discovered, the element's bounds are reused and updated as the UI moves. There are no scene-wide searches per frame. If detection fails or the currency widget isn't UI Toolkit, the panel **falls back to the existing `TopRight` offsets**. Verify the anchor visually in game before relying on it.
+
+Set `Appearance.AnchorToCurrencyHud = false` to use the manual offsets even with `TopRight`. Selecting another corner also uses manual positioning. `VerticalOffset` and `HorizontalOffset` are fallback values, not additional adjustments to the currency-relative anchor.
+
 ## v0.2.2 — compact text-only HUD
 
 The panel now shows one quest per line with its numeric `current/target` progress on the right. **No progress bars.** Completed objectives are highlighted in green, titles are width-fitted to avoid counter overlap, and the compact panel retains the in-game burgundy/gold design. It is roughly half as tall as the old five-quest layout.
@@ -22,6 +30,8 @@ Settings are stored in `BepInEx/config/community.stonewards.dailyquesttracker.cf
 - `Appearance.Scale` (default `1.0`): manual size multiplier
 - `Appearance.ReadabilityScale` (default `1.12`): additional size multiplier
 - `Appearance.AutoScaleToResolution` (default `true`): use PartyHUD-style proportional scaling relative to 1920×1080, fitting to screen bounds
+- `Appearance.AnchorToCurrencyHud` (default `true`): follow the native currency HUD when `Anchor = TopRight`, falling back if undiscoverable
+- `Appearance.CurrencyGap` (default `10`): vertical distance in physical pixels below the coin badge
 - `General.Enabled`, `General.HideCompleted`, `General.RefreshSeconds`, `General.ShowMissingQuestData`
 
 The previous `Appearance.ShowProgressBars` entry is **no longer used**. Existing config files can retain that obsolete key without affecting the text-only layout. Manual scale, anchor and offset values from earlier versions are preserved.
@@ -47,4 +57,4 @@ The named profile must already exist. The script builds against installed game a
 - `QuestHud.cs`: compact resolution-aware text overlay
 - `QuestDiagnostics.cs`: optional one-shot quest API report
 
-The mod reads game state but does not modify quests, saves or networking. **v0.2.2 still requires a build and in-game visual check.**
+The mod reads game state but does not modify quests, saves or networking. **v0.2.3 requires a build and an in-game visual check of currency HUD discovery.**
