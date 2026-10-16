@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>StonewardsDailyQuestTracker</AssemblyName>
+    <RootNamespace>StonewardsDailyQuestTracker</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GameManaged>$(GameDir)\Stonewards_Data\Managed</GameManaged>
+    <BepInExCore>$(BepInExDir)\core</BepInExCore>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp"><HintPath>$(GameManaged)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Mirror"><HintPath>$(GameManaged)\Mirror.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(GameManaged)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameManaged)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(GameManaged)\UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(GameManaged)\UnityEngine.UIElementsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(GameManaged)\UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.InputSystem"><HintPath>$(GameManaged)\Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BepInEx"><HintPath>$(BepInExCore)\BepInEx.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <Target Name="ValidateLocalDependencies" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameManaged)\Assembly-CSharp.dll')" Text="Specify -p:GameDir=... with Stonewards installation." />
+    <Error Condition="!Exists('$(BepInExCore)\BepInEx.dll')" Text="Specify -p:BepInExDir=... with the r2modman BepInEx root." />
+  </Target>
+</Project>
