@@ -220,9 +220,10 @@ namespace StonewardsDailyQuestTracker
                 GUI.color = previous;
             }
 
-            // The native container renders underneath other UI Toolkit
-            // elements, including notifications. Never draw twice.
-            if (!_nativeHudLayer.Attached)
+            // Do not suppress the working OnGUI HUD until the native
+            // container has actually produced a recent repaint. This prevents
+            // a mounted-but-invisible UI element from hiding every quest.
+            if (!_nativeHudLayer.HasRecentRepaint)
                 DrawHud(1f, 1f);
         }
 

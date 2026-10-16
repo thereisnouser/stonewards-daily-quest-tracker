@@ -3,7 +3,9 @@
 ## 0.1.2 (testing)
 
 - Keep the remaining-quest counter based on the game's total daily quest count, even when completed quests disappear from the active list (e.g. 4/5 LEFT).
-- Render the daily quest panel behind the game's native UI Toolkit overlays so notifications can appear on top.
+- Fix native HUD draw order so the quest panel remains visible rather than being placed behind full-screen game HUD elements.
+- Keep a legacy OnGUI fallback if the native overlay stops repainting.
+- Place the quest panel beneath identifiable native notification layers.
 - Add `Appearance.RenderBehindGameUI` (enabled by default) with an option to return to legacy OnGUI rendering.
 
 ## 0.1.1
