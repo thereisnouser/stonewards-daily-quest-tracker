@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.2.0";
+        public const string Version = "0.2.1";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<bool> _hideCompleted;
@@ -26,6 +26,8 @@ namespace StonewardsDailyQuestTracker
         private ConfigEntry<int> _xOffset;
         private ConfigEntry<int> _yOffset;
         private ConfigEntry<float> _scale;
+        private ConfigEntry<float> _readabilityScale;
+        private ConfigEntry<bool> _autoScaleToResolution;
         private ConfigEntry<float> _refresh;
         private ConfigEntry<Key> _toggleKey;
         private ConfigEntry<Key> _diagnosticKey;
@@ -59,8 +61,14 @@ namespace StonewardsDailyQuestTracker
             _yOffset = Config.Bind("Appearance", "VerticalOffset", 240,
                 "Vertical edge inset in actual pixels. Top-right default avoids the gold and Bell Control panels.");
             _scale = Config.Bind("Appearance", "Scale", 1.0f,
-                new ConfigDescription("Scale, relative to the 1920x1080 reference resolution.",
-                    new AcceptableValueRange<float>(0.65f, 1.5f)));
+                new ConfigDescription("Manual HUD size multiplier (0.65 - 1.8).",
+                    new AcceptableValueRange<float>(0.65f, 1.8f)));
+            _readabilityScale = Config.Bind("Appearance", "ReadabilityScale", 1.12f,
+                new ConfigDescription("Extra HUD enlargement, like PartyHUD (1.0 - 1.4).",
+                    new AcceptableValueRange<float>(1f, 1.4f)));
+            _autoScaleToResolution = Config.Bind("Appearance", "AutoScaleToResolution", true,
+                "Maintain the same HUD-to-screen proportions using 1920x1080 as a reference. " +
+                "Disable for a fixed physical-pixel panel size.");
             _refresh = Config.Bind("General", "RefreshSeconds", 1.25f,
                 new ConfigDescription("How often to read actual quest progress (unscaled seconds).",
                     new AcceptableValueRange<float>(0.3f, 5f)));
@@ -70,7 +78,7 @@ namespace StonewardsDailyQuestTracker
 
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
-            Logger.LogInfo("Daily Quest Tracker v0.2.0 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            Logger.LogInfo("Daily Quest Tracker v0.2.1 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -183,7 +191,8 @@ namespace StonewardsDailyQuestTracker
                 return;
 
             _hud.Draw(_quests, _corner.Value, _xOffset.Value, _yOffset.Value,
-                _scale.Value, _hideCompleted.Value, _showBars.Value, _showMissingDataNotice.Value);
+                _scale.Value, _readabilityScale.Value, _autoScaleToResolution.Value,
+                _hideCompleted.Value, _showBars.Value, _showMissingDataNotice.Value);
         }
 
         private static bool IsBlocked()
