@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Updated GitHub and Thunderstore READMEs to the shared thereisnouser description standard.
+- Clarified live quest tracking, the original daily total, completed-quest display modes, UI layering, controls, and configuration.
+- No gameplay or configuration changes compared with 0.1.2.
+
 ## 0.1.2
 
 - **Game notifications now appear above the daily quest panel**, including quest completion and player join messages.

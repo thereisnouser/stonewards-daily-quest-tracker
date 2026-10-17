@@ -1,60 +1,70 @@
 # Stonewards Daily Quest Tracker
 
-Keep your **daily quests and their real progress** on screen while you play. No need to keep opening the Missions menu.
+**See your daily quests and live progress during a run without constantly opening the Missions menu.** Daily Quest Tracker adds a compact, game-styled HUD that follows your active objectives.
 
-## Features
+## ✨ Features
 
-- **Live progress:** text-only objectives with current/target counters read directly from the game.
-- **Complete and move on:** choose `Hide` (finished quests disappear automatically) or `Mark` (keep them with a green checkmark).
-- **Coin-aware position:** places the panel just below the coin counter when detected, with a manual-position fallback.
-- **Screen adaptive:** resolution scaling, panel size and readability options for Full HD, 1440p, 4K and ultrawide.
-- **Clean integration:** hides in supported game menus and uses a burgundy-and-gold HUD style.
-- **Client-side:** teammates and the host do not need to install it.
+- **Live progress** — daily quest descriptions and current/target counters taken from the game.
+- **Correct quest totals** — remaining objectives are counted against the full daily total, even after completing quests.
+- **Completed quest options** — automatically hide finished quests or keep them with green checkmarks.
+- **Convenient placement** — follow the coin display when detected, or choose a corner and offsets manually.
+- **Adaptive display** — adjustable size, resolution scaling, and automatic hiding in supported game menus.
+- **Native notifications** — show game notifications above the tracker when native UI rendering is available.
 
-## Getting started
+## 🎮 How to use
 
-Install this package using r2modman or another Thunderstore-compatible mod manager. **BepInExPack** is installed automatically. Start Stonewards through your mod manager and enter a match.
+Join a session to see your daily objectives automatically. Press **F6** to show or hide the tracker.
 
-Press **F6** to toggle the quest panel.
+In the default **Hide** mode, completed quests disappear and the remaining count keeps its original total. When all daily objectives are finished, a short completion message appears. Use **Mark** mode if you want completed quests to remain visible.
 
-## Completed quests
+**F9** exports a diagnostic report for troubleshooting only. Both keys are configurable.
 
-The default behavior is **Hide**, so the panel becomes shorter as you finish objectives.
+## ⚙️ Configuration
 
-To leave finished quests visible with green checkmarks instead, edit the BepInEx configuration:
+Edit the BepInEx configuration in your active profile:
+
+`BepInEx/config/community.stonewards.dailyquesttracker.cfg`
+
+Important settings:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
+| `Appearance.AnchorToCurrencyHud` | `true` | Place the panel below the coin HUD when detected |
+| `Appearance.RenderBehindGameUI` | `true` | Prefer native rendering beneath game notifications |
+| `Appearance.CurrencyGap` | `10` | Spacing below the coins, in pixels |
+| `Appearance.Anchor` | `TopRight` | Manual placement corner |
+| `Appearance.HorizontalOffset` | `18` | Manual horizontal inset |
+| `Appearance.VerticalOffset` | `240` | Manual vertical inset |
+| `Appearance.AutoScaleToResolution` | `true` | Adapt the panel to screen resolution |
+| `Appearance.Scale` | `1.0` | Panel size multiplier |
+| `Appearance.ReadabilityScale` | `1.12` | Extra readability scaling |
+
+To show completed quests with checkmarks:
 
 ```ini
 [General]
 CompletedQuestMode = Mark
 ```
 
-Use `Hide` to switch back. When all quests are done in Hide mode, a small completion message remains.
+## 📦 Installation
 
-## Position and scale
+Install **DailyQuestTracker** using **r2modman** or another compatible Thunderstore mod manager. The required BepInExPack dependency is installed automatically by the manager. Launch Stonewards through your modded profile.
 
-The mod attempts to anchor the panel under the game's coin counter by default. Change these BepInEx settings if you prefer a manual position:
+## 🔧 Compatibility
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `Appearance.AnchorToCurrencyHud` | `true` | Follow the coin counter when detectable |
-| `Appearance.RenderBehindGameUI` | `true` | Let in-game notifications appear above the quest panel; disable to use legacy rendering |
-| `Appearance.CurrencyGap` | `10` | Gap below the counter, in screen pixels |
-| `Appearance.Anchor` | `TopRight` | Manual corner if coin anchoring is disabled |
-| `Appearance.HorizontalOffset` | `18` | Manual horizontal inset |
-| `Appearance.VerticalOffset` | `240` | Manual vertical inset |
-| `Appearance.AutoScaleToResolution` | `true` | Adapt size to resolution |
-| `Appearance.Scale` | `1.0` | Panel size multiplier |
-| `Appearance.ReadabilityScale` | `1.12` | Extra size/readability |
+- **Game:** Stonewards; developed against version **0.2.3**.
+- **Mod loader:** BepInEx 5.
+- **Multiplayer:** Client-side; other players and the host do not need to install the mod.
 
-Config file: `BepInEx/config/community.stonewards.dailyquesttracker.cfg` in your active profile.
+## ⚠️ Known limitations
 
-**F9** writes an optional quest API diagnostic report if you are troubleshooting. It is not needed during regular play.
+If the currency HUD cannot be detected, the tracker uses your configured corner and offsets. Notification layering relies on the game's native UI; legacy fallback rendering may appear above some notifications. Future game UI or quest-system updates may require compatibility changes.
 
-## Compatibility
+## 🔗 Links
 
-Designed for **Stonewards 0.2.3**, using **BepInEx 5**. The plugin is read-only and does not change daily quest completion, player saves or networking. Quest or UI changes in future Stonewards updates may need a mod update.
+[GitHub](https://github.com/thereisnouser/stonewards-daily-quest-tracker) · [Report an issue](https://github.com/thereisnouser/stonewards-daily-quest-tracker/issues) · [Changelog](https://github.com/thereisnouser/stonewards-daily-quest-tracker/blob/main/thunderstore/CHANGELOG.md)
 
-## Links
+---
 
-- [Source code and developer instructions](https://github.com/thereisnouser/stonewards-daily-quest-tracker)
-- [Report an issue or suggest a feature](https://github.com/thereisnouser/stonewards-daily-quest-tracker/issues)
+*Made by thereisnouser*
