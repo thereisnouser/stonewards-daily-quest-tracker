@@ -164,9 +164,9 @@ namespace StonewardsDailyQuestTracker
                     GUI.Label(new Rect(13, HeaderHeight + 5, Width - 26, 30),
                         noSource ? "QUEST PROGRESS NOT DETECTED" : "ALL QUESTS COMPLETED",
                         _emptyTitle);
-                    return;
                 }
-
+                else
+                {
                 int row = 0;
                 // Unfinished objectives always come first, in the order
                 // selected by the game. Completed ones follow in Mark mode.
@@ -193,11 +193,34 @@ namespace StonewardsDailyQuestTracker
                     GUI.Label(new Rect(13, footerY, Width - 26, FooterHeight - 2f),
                         "+ " + overflow + " MORE QUESTS", _subtle);
                 }
+                }
+                if (pinnedRows > 0)
+                    DrawPinnedSection(height + 8f, pinned, pinnedRows);
             }
             finally
             {
                 GUI.matrix = matrix;
                 GUI.color = guiColor;
+            }
+        }
+
+        private void DrawPinnedSection(float top, List<QuestView> pinned, int rows)
+        {
+            float sectionHeight = HeaderHeight + rows * ItemHeight + 5f;
+            GUI.BeginGroup(new Rect(0f, top, Width, sectionHeight));
+            try
+            {
+                DrawBackground(sectionHeight);
+                GUI.Label(new Rect(13f, 3f, Width - 132f, 26f),
+                    "PINNED QUESTS", _heading);
+                GUI.Label(new Rect(Width - 120f, 3f, 105f, 26f),
+                    rows + "/" + PinnedMissions.MaxPins, _rowCounter);
+                for (int i = 0; i < rows; i++)
+                    DrawRow(pinned[i], HeaderHeight + 3f + i * ItemHeight);
+            }
+            finally
+            {
+                GUI.EndGroup();
             }
         }
 
