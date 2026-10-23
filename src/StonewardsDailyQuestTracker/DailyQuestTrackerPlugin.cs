@@ -154,6 +154,10 @@ namespace StonewardsDailyQuestTracker
                         TryExportDiagnostics("F9 hotkey");
                 }
 
+                // PIN controls should work even when Missions is opened
+                // outside an active multiplayer session.
+                _pinned.UpdateMenu();
+
                 bool connected = NetworkClient.active;
                 if (!connected)
                 {
@@ -175,7 +179,6 @@ namespace StonewardsDailyQuestTracker
                     _wasConnected = true;
                     _nextUpdate = 0f;
                 }
-                _pinned.UpdateMenu();
                 // The layer needs the game's UI Toolkit panel. Currency
                 // discovery is also the bounded way to find that panel.
                 if ((_anchorToCurrencyHud.Value && _corner.Value == PanelCorner.TopRight) ||
