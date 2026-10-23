@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -51,11 +52,18 @@ namespace StonewardsDailyQuestTracker
         private float _nextMenuUpdate;
         private readonly Dictionary<VisualElement, Button> _buttons =
             new Dictionary<VisualElement, Button>();
+        private readonly Texture2D _pinIcon;
+
+        // On the screenshot right:56 makes the PIN button overlap both the
+        // completion tick and the reward. Keep it between progress and reward.
+        private const float PinRightInset = 174f;
+        private const float PinSize = 37f;
 
         public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
         {
             _saved = saved;
             _log = log;
+            _pinIcon = LoadPinIcon(log);
             Load();
         }
 
@@ -122,20 +130,50 @@ namespace StonewardsDailyQuestTracker
                             focusable = false
                         };
                         pin.style.position = Position.Absolute;
-                        pin.style.right = 56;
-                        pin.style.top = 15;
-                        pin.style.width = 51;
-                        pin.style.height = 30;
-                        pin.style.unityTextAlign = TextAnchor.MiddleCenter;
-                        pin.style.fontSize = 17;
-                        pin.style.borderLeftWidth = 1;
-                        pin.style.borderRightWidth = 1;
-                        pin.style.borderTopWidth = 1;
-                        pin.style.borderBottomWidth = 1;
-                        pin.style.borderLeftColor = new Color(.72f, .64f, .48f);
-                        pin.style.borderRightColor = new Color(.72f, .64f, .48f);
-                        pin.style.borderTopColor = new Color(.72f, .64f, .48f);
-                        pin.style.borderBottomColor = new Color(.72f, .64f, .48f);
+                        pin.style.right = PinRightInset;
+                        pin.style.top = 12f;
+                        pin.style.width = PinSize;
+                        pin.style.height = PinSize;
+                        pin.style.borderLeftWidth = 1f;
+                        pin.style.borderRightWidth = 1f;
+                        pin.style.borderTopWidth = 1f;
+                        pin.style.borderBottomWidth = 1f;
+                        pin.style.paddingLeft = 0f;
+                        pin.style.paddingRight = 0f;
+                        pin.style.paddingTop = 0f;
+                        pin.style.paddingBottom = 0f;
+                        pin.text = "";
+                        pin.userData = id;
+
+                        if (_pinIcon != null)
+                        {
+                            var glyph = new Image
+                            {
+                                name = "DailyQuestTrackerPinGlyph",
+                                image = _pinIcon,
+                                scaleMode = ScaleMode.ScaleToFit,
+                                pickingMode = PickingMode.Ignore
+                            };
+                            glyph.style.position = Position.Absolute;
+                            glyph.style.left = 4f;
+                            glyph.style.top = 3f;
+                            glyph.style.width = 27f;
+                            glyph.style.height = 29f;
+                            pin.Add(glyph);
+                        }
+                        else
+                        {
+                            // If Unity's image converter is unavailable, show
+                            // the control rather than silently losing pinning.
+                            pin.text = "+";
+                            pin.style.fontSize = 25f;
+                            pin.style.unityTextAlign = TextAnchor.MiddleCenter;
+                        }
+                        var hoveredPin = pin;
+                        pin.RegisterCallback<PointerEnterEvent>(evt =>
+                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData, true));
+                        pin.RegisterCallback<PointerLeaveEvent>(evt =>
+                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData));
                         pin.RegisterCallback<PointerDownEvent>(evt => evt.StopPropagation());
                         pin.RegisterCallback<PointerUpEvent>(evt => evt.StopPropagation());
                         pin.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
@@ -143,6 +181,7 @@ namespace StonewardsDailyQuestTracker
                     }
                     _buttons[row] = pin;
                 }
+                pin.userData = id;
                 SetPinAppearance(pin, id);
             }
         }
@@ -173,19 +212,87 @@ namespace StonewardsDailyQuestTracker
                 _log.LogInfo("Pinned global mission: " + id);
             }
             _nextMenuUpdate = 0f;
+            // Refresh immediately; the menu should never show a stale state.
+            foreach (Button control in _buttons.Values)
+                if (control != null && control.panel != null &&
+                    control.userData is string key)
+                    SetPinAppearance(control, key);
         }
 
-        private void SetPinAppearance(Button pin, string id)
+        private void SetPinAppearance(Button pin, string id, bool hovering = false)
         {
             bool selected = _ids.Contains(id);
-            pin.text = selected ? "ON" : "PIN";
-            pin.style.color = selected ? new Color(.47f, .87f, .56f) :
-                new Color(.98f, .79f, .51f);
-            pin.style.backgroundColor = selected
-                ? new Color(.17f, .30f, .23f, .98f)
-                : new Color(.29f, .18f, .19f, .96f);
-            pin.tooltip = selected ? "Remove from tracker" :
-                _ids.Count >= MaxPins ? "Five missions maximum" : "Track this mission in HUD";
+            // Subtle slate/burgundy button compatible with the game's menu;
+            // gold frame for tracking, brighter on hover.
+            Color edge = hovering ? new Color(1f, .85f, .56f, 1f) :
+                selected ? new Color(.98f, .78f, .38f, 1f) :
+                new Color(.60f, .55f, .44f, 1f);
+            pin.style.borderLeftColor = edge;
+            pin.style.borderRightColor = edge;
+            pin.style.borderTopColor = edge;
+            pin.style.borderBottomColor = edge;
+            pin.style.backgroundColor = hovering
+                ? new Color(.34f, .23f, .23f, .98f)
+                : selected ? new Color(.38f, .27f, .18f, .98f)
+                    : new Color(.16f, .20f, .26f, .93f);
+
+            Image glyph = pin.Q<Image>("DailyQuestTrackerPinGlyph");
+            if (glyph != null)
+                glyph.tintColor = selected || hovering
+                    ? Color.white : new Color(.84f, .79f, .70f, .84f);
+            else
+                pin.style.color = edge;
+            pin.tooltip = selected ? "Unpin mission" :
+                _ids.Count >= MaxPins ? "Five missions maximum" : "Pin mission";
+        }
+
+        private static Texture2D LoadPinIcon(ManualLogSource log)
+        {
+            try
+            {
+                using (Stream stream = typeof(PinnedMissions).Assembly
+                    .GetManifestResourceStream("StonewardsDailyQuestTracker.pin-icon.png"))
+                {
+                    if (stream == null)
+                        throw new InvalidOperationException("Embedded pin artwork not found.");
+                    byte[] png = new byte[stream.Length];
+                    int offset = 0;
+                    while (offset < png.Length)
+                    {
+                        int read = stream.Read(png, offset, png.Length - offset);
+                        if (read == 0) throw new EndOfStreamException();
+                        offset += read;
+                    }
+
+                    // ImageConversion is a Unity extension in a separate
+                    // module. Reflection avoids adding new game DLL references
+                    // to the mod's otherwise stable build dependencies.
+                    Type converter = Type.GetType(
+                        "UnityEngine.ImageConversion, UnityEngine.ImageConversionModule");
+                    if (converter == null)
+                        throw new InvalidOperationException("Unity ImageConversion unavailable.");
+                    MethodInfo load = converter.GetMethod("LoadImage",
+                        BindingFlags.Public | BindingFlags.Static, null,
+                        new[] { typeof(Texture2D), typeof(byte[]), typeof(bool) }, null);
+                    if (load == null)
+                        throw new MissingMethodException("ImageConversion.LoadImage");
+                    var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
+                    {
+                        name = "DailyQuestTracker-BrassPin",
+                        filterMode = FilterMode.Point,
+                        wrapMode = TextureWrapMode.Clamp
+                    };
+                    object result = load.Invoke(null, new object[] { texture, png, false });
+                    if (result is bool loaded && !loaded)
+                        throw new InvalidDataException("Unity failed to decode pin artwork.");
+                    return texture;
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning("Pinned mission icon load failed: " + ex.Message);
+                return null;
+            }
         }
 
         public List<QuestView> Read()
