@@ -50,6 +50,7 @@ namespace StonewardsDailyQuestTracker
             CompletedQuestMode completedMode, bool showStatus,
             Rect? currencyBadge, int currencyGap,
             int totalDailyQuests, bool hasSeenDailyQuests,
+            List<QuestView> pinned,
             float unitsPerPixelX = 1f, float unitsPerPixelY = 1f,
             float originScreenX = 0f, float originScreenY = 0f)
         {
@@ -66,11 +67,13 @@ namespace StonewardsDailyQuestTracker
             int total = Math.Max(quests.Count, totalDailyQuests);
 
             bool empty = matching == 0;
-            if (empty && quests.Count == 0 && !showStatus && !hasSeenDailyQuests) return;
+            if (empty && quests.Count == 0 && !showStatus && !hasSeenDailyQuests && pinned.Count == 0) return;
             int visible = Math.Min(matching, MaxVisible);
             int overflow = Math.Max(0, matching - visible);
             float height = HeaderHeight + (empty ? 39f : visible * ItemHeight + 5f) +
                            (overflow > 0 ? FooterHeight : 0f);
+            int pinnedRows = Math.Min(pinned.Count, PinnedMissions.MaxPins);
+            float totalHeight = height + (pinnedRows > 0 ? 8f + HeaderHeight + pinnedRows * ItemHeight + 5f : 0f);
 
             // Mirror PartyHUD: clamp preference before multiplying by the
             // resolution ratio. This allows proportional enlargement at 1440p/4K
@@ -87,7 +90,7 @@ namespace StonewardsDailyQuestTracker
             // Offsets are physical screen pixels, independent of GUI.matrix.
             // Reduce size only as needed to fit within the actual display.
             factor = Mathf.Min(factor, (Screen.width - EdgeMargin * 2f) / Width,
-                (Screen.height - EdgeMargin * 2f) / height);
+                (Screen.height - EdgeMargin * 2f) / totalHeight);
 
             bool followCurrency = anchor == PanelCorner.TopRight &&
                 currencyBadge.HasValue && currencyBadge.Value.yMax >= 0f &&
@@ -100,7 +103,7 @@ namespace StonewardsDailyQuestTracker
                 // arbitrary top-edge offset. UI is allowed to change at runtime.
                 float below = Screen.height - EdgeMargin - badgeBottom - gap;
                 if (below >= 48f)
-                    factor = Mathf.Min(factor, below / height);
+                    factor = Mathf.Min(factor, below / totalHeight);
                 else
                     followCurrency = false;
             }
@@ -110,13 +113,13 @@ namespace StonewardsDailyQuestTracker
                 float usableHeight = Screen.height -
                     Mathf.Max(EdgeMargin, verticalInset) - EdgeMargin;
                 if (usableHeight >= 72f)
-                    factor = Mathf.Min(factor, usableHeight / height);
+                    factor = Mathf.Min(factor, usableHeight / totalHeight);
             }
             if (factor <= 0f)
                 return;
 
             float panelWidth = Width * factor;
-            float panelHeight = height * factor;
+            float panelHeight = totalHeight * factor;
             bool right = anchor == PanelCorner.TopRight || anchor == PanelCorner.BottomRight;
             bool bottom = anchor == PanelCorner.BottomRight || anchor == PanelCorner.BottomLeft;
             float x = right ? Screen.width - Mathf.Max(EdgeMargin, horizontalInset) - panelWidth :
