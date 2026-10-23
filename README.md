@@ -4,12 +4,21 @@
 
 ## ✨ Features
 
+- **Pinned standard missions** — pin objectives from General, Characters, Tomes, and Rings to a dedicated HUD section.
 - **Live daily progress** — show the game's active daily objectives with their current/target counters.
 - **Accurate remaining count** — track unfinished quests against the original daily total, even after an objective is completed or claimed.
 - **Completed quest options** — hide finished objectives or keep them at the bottom with green checkmarks.
 - **Coin-aware placement** — position the panel below the currency HUD when detected, with manual corner and offset controls as a fallback.
 - **Game-friendly display** — compact, text-focused rows with a Stonewards-style frame, adaptive scaling, and automatic hiding in supported menus.
 - **Notification layering** — render the tracker beneath native game notifications when the native UI layer is available.
+
+## 📌 Pinned missions (0.2.0 testing)
+
+Open **MISSIONS** and switch to **General**, **Characters**, **Tomes**, or **Rings**. Click **PIN** on a mission row to add it to the tracker; click **ON** on the same row to remove it.
+
+The **PINNED QUESTS** section appears below **DAILY QUESTS** and shows live mission progress from the game's own quest runtime. Completed pinned missions remain visible in green until you unpin them. You can pin up to **5** missions. Your selection is saved across game launches in the BepInEx configuration.
+
+> Pinned mission tracking is client-side and read-only. It does not change quest progress, rewards, or unlocks. If the game's runtime data has not loaded yet, progress may temporarily show a dash.
 
 ## 🎮 How to use
 
@@ -34,7 +43,7 @@ The file is generated after the mod has launched. The principal options are:
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `General.Enabled` | `true` | Enable the tracker |
+| `PinnedMissions.QuestIds` | *(empty)* | Persistent IDs of pinned normal missions (managed automatically by PIN buttons) |\n| `General.Enabled` | `true` | Enable the tracker |
 | `General.CompletedQuestMode` | `Hide` | `Hide` completed quests or `Mark` them |
 | `General.ShowMissingQuestData` | `true` | Show a small notice when daily quest data is unavailable |
 | `General.RefreshSeconds` | `1.25` | Seconds between quest-data reads |

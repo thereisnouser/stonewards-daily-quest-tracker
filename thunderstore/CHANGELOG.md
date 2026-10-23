@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (testing)
+
+- Add PIN/ON controls to normal mission rows under General, Characters, Tomes, and Rings.
+- Show up to five pinned missions under daily quests, with live progress and green completion state.
+- Persist pinned mission IDs between launches in the BepInEx configuration.
+- Preserve game notifications above the HUD and keep native/legacy panel layouts consistent.
+
 ## 0.1.3
 
 - Updated GitHub and Thunderstore READMEs to the shared thereisnouser description standard.

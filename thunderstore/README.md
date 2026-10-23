@@ -4,12 +4,19 @@
 
 ## ✨ Features
 
+- **Pin standard missions** — select objectives from General, Characters, Tomes, or Rings and see them under daily quests.
 - **Live progress** — daily quest descriptions and current/target counters taken from the game.
 - **Correct quest totals** — remaining objectives are counted against the full daily total, even after completing quests.
 - **Completed quest options** — automatically hide finished quests or keep them with green checkmarks.
 - **Convenient placement** — follow the coin display when detected, or choose a corner and offsets manually.
 - **Adaptive display** — adjustable size, resolution scaling, and automatic hiding in supported game menus.
 - **Native notifications** — show game notifications above the tracker when native UI rendering is available.
+
+## 📌 Pin other missions
+
+Open **MISSIONS** and use the **PIN** buttons in the **General**, **Characters**, **Tomes**, and **Rings** tabs. Pinned objectives appear under daily quests in a separate **PINNED QUESTS** section with live numeric progress.
+
+Press **ON** to unpin a mission. Up to **5 missions** can be pinned, and the selection persists after restarting Stonewards. Completed pinned missions are marked green until unpinned.
 
 ## 🎮 How to use
 
@@ -29,7 +36,7 @@ Important settings:
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
+| `PinnedMissions.QuestIds` | *(empty)* | Saved mission pins; managed from the Missions screen |\n| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
 | `Appearance.AnchorToCurrencyHud` | `true` | Place the panel below the coin HUD when detected |
 | `Appearance.RenderBehindGameUI` | `true` | Prefer native rendering beneath game notifications |
 | `Appearance.CurrencyGap` | `10` | Spacing below the coins, in pixels |
