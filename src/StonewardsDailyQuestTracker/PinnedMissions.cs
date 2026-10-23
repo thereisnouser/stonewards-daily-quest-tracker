@@ -255,7 +255,7 @@ namespace StonewardsDailyQuestTracker
                 {
                     if (stream == null)
                         throw new InvalidOperationException("Embedded pin artwork not found.");
-                    byte[] png = new byte[stream.Length];
+                    byte[] png = new byte[checked((int)stream.Length)];
                     int offset = 0;
                     while (offset < png.Length)
                     {
