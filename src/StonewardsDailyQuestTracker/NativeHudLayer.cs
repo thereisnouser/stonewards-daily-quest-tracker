@@ -20,6 +20,7 @@ namespace StonewardsDailyQuestTracker
         private const float FooterHeight = 18f;
         private const float EdgeMargin = 8f;
         private const int MaxRows = 5;
+        private const float PinnedGap = 8f;
         private const float ReferenceWidth = 1920f;
         private const float ReferenceHeight = 1080f;
         private const float PanelSizeBoost = .95f;
@@ -56,6 +57,19 @@ namespace StonewardsDailyQuestTracker
         private readonly Label[] _counters = new Label[MaxRows];
         private readonly VisualElement[] _dividers = new VisualElement[MaxRows];
         private readonly bool[] _completedRows = new bool[MaxRows];
+        private VisualElement _pinnedGroup;
+        private readonly VisualElement[] _pinBackground = new VisualElement[2];
+        private readonly VisualElement[] _pinHeader = new VisualElement[2];
+        private readonly VisualElement[] _pinFrame = new VisualElement[12];
+        private VisualElement _pinDivider;
+        private Label _pinHeading;
+        private Label _pinCount;
+        private readonly VisualElement[] _pinBars = new VisualElement[PinnedMissions.MaxPins];
+        private readonly Label[] _pinTicks = new Label[PinnedMissions.MaxPins];
+        private readonly Label[] _pinTitles = new Label[PinnedMissions.MaxPins];
+        private readonly Label[] _pinCounters = new Label[PinnedMissions.MaxPins];
+        private readonly VisualElement[] _pinDividers = new VisualElement[PinnedMissions.MaxPins];
+        private List<QuestView> _previousPins;
 
         private Font _font;
         private Font _checkFont;
@@ -175,7 +189,7 @@ namespace StonewardsDailyQuestTracker
             float readabilityScale, bool autoScaleToResolution,
             CompletedQuestMode completedMode, bool showStatus,
             Rect? currencyBadge, int currencyGap, int totalDailyQuests,
-            bool hasSeenDailyQuests)
+            bool hasSeenDailyQuests, List<QuestView> pinned)
         {
             if (!Attached) return;
 
@@ -186,8 +200,10 @@ namespace StonewardsDailyQuestTracker
             int matching = completedMode == CompletedQuestMode.Hide
                 ? remaining : quests.Count;
             bool empty = matching == 0;
+            int pinRows = Math.Min(pinned.Count, PinnedMissions.MaxPins);
             bool shouldShow = visible &&
-                !(empty && quests.Count == 0 && !showStatus && !hasSeenDailyQuests);
+                (pinRows > 0 ||
+                 !(empty && quests.Count == 0 && !showStatus && !hasSeenDailyQuests));
 
             if (!shouldShow)
             {
@@ -201,6 +217,9 @@ namespace StonewardsDailyQuestTracker
             int overflow = Math.Max(0, matching - rows);
             float height = HeaderHeight + (empty ? 39f : rows * ItemHeight + 5f) +
                            (overflow > 0 ? FooterHeight : 0f);
+            float pinnedHeight = pinRows > 0
+                ? HeaderHeight + pinRows * ItemHeight + 5f : 0f;
+            float totalHeight = height + (pinRows > 0 ? PinnedGap + pinnedHeight : 0f);
             float baseScale = Mathf.Clamp(requestedScale *
                 Mathf.Clamp(readabilityScale, 1f, 1.4f) * PanelSizeBoost, .55f, 1.8f);
             float resolutionScale = autoScaleToResolution
@@ -208,7 +227,7 @@ namespace StonewardsDailyQuestTracker
                 : 1f;
             float factor = baseScale * resolutionScale;
             factor = Mathf.Min(factor, (Screen.width - EdgeMargin * 2f) / Width,
-                (Screen.height - EdgeMargin * 2f) / height);
+                (Screen.height - EdgeMargin * 2f) / totalHeight);
 
             bool followCurrency = anchor == PanelCorner.TopRight &&
                 currencyBadge.HasValue && currencyBadge.Value.yMax >= 0f &&
@@ -218,18 +237,18 @@ namespace StonewardsDailyQuestTracker
             if (followCurrency)
             {
                 float below = Screen.height - EdgeMargin - badgeBottom - gap;
-                if (below >= 48f) factor = Mathf.Min(factor, below / height);
+                if (below >= 48f) factor = Mathf.Min(factor, below / totalHeight);
                 else followCurrency = false;
             }
             if (autoScaleToResolution && !followCurrency)
             {
                 float usable = Screen.height -
                     Mathf.Max(EdgeMargin, verticalInset) - EdgeMargin;
-                if (usable >= 72f) factor = Mathf.Min(factor, usable / height);
+                if (usable >= 72f) factor = Mathf.Min(factor, usable / totalHeight);
             }
             if (factor <= 0f) return;
 
-            float widthPixels = Width * factor, heightPixels = height * factor;
+            float widthPixels = Width * factor, heightPixels = totalHeight * factor;
             bool right = anchor == PanelCorner.TopRight || anchor == PanelCorner.BottomRight;
             bool bottom = anchor == PanelCorner.BottomRight || anchor == PanelCorner.BottomLeft;
             float x = right ? Screen.width - Mathf.Max(EdgeMargin, horizontalInset) - widthPixels :
@@ -264,13 +283,13 @@ namespace StonewardsDailyQuestTracker
                 _previousY = panelY;
             }
             bool geometryChanged = Different(sx, _previousSx) ||
-                Different(sy, _previousSy) || Different(height, _previousHeight);
+                Different(sy, _previousSy) || Different(totalHeight, _previousHeight);
             if (geometryChanged)
             {
-                Layout(sx, sy, height, rows, overflow);
+                Layout(sx, sy, height, totalHeight, rows, overflow, pinRows);
                 _previousSx = sx;
                 _previousSy = sy;
-                _previousHeight = height;
+                _previousHeight = totalHeight;
             }
 
             int total = Math.Max(quests.Count, totalDailyQuests);
@@ -284,6 +303,11 @@ namespace StonewardsDailyQuestTracker
                 _previousMode = completedMode;
                 _previousTotal = total;
                 _previousHasSeen = hasSeenDailyQuests;
+            }
+            if (!ReferenceEquals(_previousPins, pinned) || geometryChanged)
+            {
+                PopulatePins(pinned);
+                _previousPins = pinned;
             }
         }
 
@@ -346,6 +370,35 @@ namespace StonewardsDailyQuestTracker
                 _counters[i] = MakeLabel(_panel, GoldText, TextAnchor.MiddleRight);
                 _dividers[i] = MakeRect(_panel, RowDivider);
             }
+
+            _pinnedGroup = new VisualElement
+            {
+                name = "DailyQuestTrackerPinnedMissions",
+                pickingMode = PickingMode.Ignore
+            };
+            _pinnedGroup.style.position = Position.Absolute;
+            _pinnedGroup.style.overflow = Overflow.Hidden;
+            _panel.Add(_pinnedGroup);
+            for (int i = 0; i < 2; i++)
+            {
+                _pinBackground[i] = MakeRect(_pinnedGroup, MainFill);
+                _pinHeader[i] = MakeRect(_pinnedGroup, HeaderFill);
+            }
+            for (int i = 0; i < _pinFrame.Length; i++)
+                _pinFrame[i] = MakeRect(_pinnedGroup, GoldFrame);
+            _pinDivider = MakeRect(_pinnedGroup, GoldFrame);
+            _pinHeading = MakeLabel(_pinnedGroup, GoldText, TextAnchor.MiddleLeft);
+            _pinHeading.text = "PINNED QUESTS";
+            _pinCount = MakeLabel(_pinnedGroup, GoldText, TextAnchor.MiddleRight);
+            for (int i = 0; i < PinnedMissions.MaxPins; i++)
+            {
+                _pinBars[i] = MakeRect(_pinnedGroup, GoldText);
+                _pinTicks[i] = MakeLabel(_pinnedGroup, SuccessText, TextAnchor.MiddleLeft, _checkFont);
+                _pinTicks[i].text = "✔";
+                _pinTitles[i] = MakeLabel(_pinnedGroup, PrimaryText, TextAnchor.MiddleLeft);
+                _pinCounters[i] = MakeLabel(_pinnedGroup, GoldText, TextAnchor.MiddleRight);
+                _pinDividers[i] = MakeRect(_pinnedGroup, RowDivider);
+            }
         }
 
         private static VisualElement MakeRect(VisualElement parent, Color color)
@@ -386,10 +439,11 @@ namespace StonewardsDailyQuestTracker
             label.style.fontSize = Mathf.Max(9f, points * sy);
         }
 
-        private void Layout(float sx, float sy, float height, int rows, int overflow)
+        private void Layout(float sx, float sy, float height, float totalHeight,
+            int rows, int overflow, int pinRows)
         {
             _panel.style.width = Width * sx;
-            _panel.style.height = height * sy;
+            _panel.style.height = totalHeight * sy;
 
             // The original pixel-stepped shape from QuestHud.DrawBackground.
             SetRect(_backgroundPieces[0], 7, 0, Width - 14, height, sx, sy);
@@ -434,6 +488,73 @@ namespace StonewardsDailyQuestTracker
                 SetFont(_ticks[i], 19, sy);
                 SetFont(_titles[i], 17, sy);
                 SetFont(_counters[i], 16, sy);
+            }
+            LayoutPins(sx, sy, height, pinRows);
+        }
+
+        private void LayoutPins(float sx, float sy, float dailyHeight, int rows)
+        {
+            _pinnedGroup.style.display = rows > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            if (rows == 0) return;
+            float h = HeaderHeight + rows * ItemHeight + 5f;
+            SetRect(_pinnedGroup, 0, dailyHeight + PinnedGap, Width, h, sx, sy);
+            SetRect(_pinBackground[0], 7, 0, Width - 14, h, sx, sy);
+            SetRect(_pinBackground[1], 0, 7, Width, h - 14, sx, sy);
+            SetRect(_pinHeader[0], 7, 2, Width - 14, HeaderHeight - 2, sx, sy);
+            SetRect(_pinHeader[1], 2, 7, Width - 4, HeaderHeight - 7, sx, sy);
+            // The same stepped gold frame used by the daily section.
+            SetRect(_pinFrame[0], 8, 0, Width - 16, 2, sx, sy);
+            SetRect(_pinFrame[1], 5, 2, 3, 2, sx, sy);
+            SetRect(_pinFrame[2], 2, 5, 3, 2, sx, sy);
+            SetRect(_pinFrame[3], Width - 8, 2, 3, 2, sx, sy);
+            SetRect(_pinFrame[4], Width - 5, 5, 3, 2, sx, sy);
+            SetRect(_pinFrame[5], 0, 7, 2, h - 14, sx, sy);
+            SetRect(_pinFrame[6], Width - 2, 7, 2, h - 14, sx, sy);
+            SetRect(_pinFrame[7], 8, h - 2, Width - 16, 2, sx, sy);
+            SetRect(_pinFrame[8], 5, h - 4, 3, 2, sx, sy);
+            SetRect(_pinFrame[9], 2, h - 7, 3, 2, sx, sy);
+            SetRect(_pinFrame[10], Width - 8, h - 4, 3, 2, sx, sy);
+            SetRect(_pinFrame[11], Width - 5, h - 7, 3, 2, sx, sy);
+            SetRect(_pinDivider, 2, HeaderHeight - 1, Width - 4, 1, sx, sy);
+            SetRect(_pinHeading, 13, 3, Width - 132, 26, sx, sy);
+            SetRect(_pinCount, Width - 120, 3, 105, 26, sx, sy);
+            SetFont(_pinHeading, 18, sy);
+            SetFont(_pinCount, 15, sy);
+            for (int i = 0; i < PinnedMissions.MaxPins; i++)
+            {
+                float y = HeaderHeight + 3f + i * ItemHeight;
+                SetRect(_pinBars[i], 8, y + 6, 2, 17, sx, sy);
+                SetRect(_pinTicks[i], 7, y + 2, 24, 24, sx, sy);
+                SetRect(_pinTitles[i], 16, y + 1, 219, 24, sx, sy);
+                SetRect(_pinCounters[i], Width - 70, y + 1, 57, 24, sx, sy);
+                SetRect(_pinDividers[i], 11, y + ItemHeight - 2, Width - 22, 1, sx, sy);
+                SetFont(_pinTicks[i], 19, sy);
+                SetFont(_pinTitles[i], 17, sy);
+                SetFont(_pinCounters[i], 16, sy);
+            }
+        }
+
+        private void PopulatePins(List<QuestView> pins)
+        {
+            int count = Math.Min(pins.Count, PinnedMissions.MaxPins);
+            _pinCount.text = count + "/" + PinnedMissions.MaxPins;
+            for (int i = 0; i < PinnedMissions.MaxPins; i++)
+            {
+                bool active = i < count;
+                QuestView q = active ? pins[i] : null;
+                bool done = active && q.Completed;
+                _pinBars[i].style.display = active && !done ? DisplayStyle.Flex : DisplayStyle.None;
+                _pinTicks[i].style.display = done ? DisplayStyle.Flex : DisplayStyle.None;
+                _pinTitles[i].style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
+                _pinCounters[i].style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
+                _pinDividers[i].style.display = active ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!active) continue;
+                _pinTitles[i].style.color = done ? SuccessText : PrimaryText;
+                _pinCounters[i].style.color = done ? SuccessText : GoldText;
+                _pinTitles[i].text = q.Title ?? "Mission";
+                _pinCounters[i].text = q.Progress.HasValue && q.Target.HasValue
+                    ? Math.Min(q.Progress.Value, q.Target.Value) + "/" + q.Target.Value
+                    : done ? "DONE" : "—";
             }
         }
 
@@ -497,6 +618,7 @@ namespace StonewardsDailyQuestTracker
             _parent = null;
             _notificationBranch = null;
             _previousQuests = null;
+            _previousPins = null;
             _previousX = float.NaN;
             _previousY = float.NaN;
             _previousSx = float.NaN;
