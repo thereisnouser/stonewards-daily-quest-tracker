@@ -11,6 +11,10 @@
     <BepInExCore>$(BepInExDir)\core</BepInExCore>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Embedded artwork ensures mod-manager installs require only the DLL. -->
+    <EmbeddedResource Include="..\..\assets\pin-icon.png" LogicalName="StonewardsDailyQuestTracker.pin-icon.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="Assembly-CSharp"><HintPath>$(GameManaged)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Mirror"><HintPath>$(GameManaged)\Mirror.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(GameManaged)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
