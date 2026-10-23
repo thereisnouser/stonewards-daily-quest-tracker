@@ -16,7 +16,7 @@ namespace StonewardsDailyQuestTracker
     {
         public const string Guid = "community.stonewards.dailyquesttracker";
         public const string Name = "Stonewards Daily Quest Tracker";
-        public const string Version = "0.1.3";
+        public const string Version = "0.2.0";
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<CompletedQuestMode> _completedQuestMode;
@@ -37,6 +37,8 @@ namespace StonewardsDailyQuestTracker
         private QuestHud _hud;
         private CurrencyHudAnchor _currencyAnchor;
         private NativeHudLayer _nativeHudLayer;
+        private PinnedMissions _pinned;
+        private List<QuestView> _pinnedQuests = new List<QuestView>();
         private List<QuestView> _quests = new List<QuestView>();
         private float _nextUpdate;
         private float _nextError;
@@ -91,11 +93,13 @@ namespace StonewardsDailyQuestTracker
             _diagnosticKey = Config.Bind("Hotkeys", "DumpQuestDiagnostics", Key.F9,
                 "Write quest-system field names to BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt.");
 
+            _pinned = new PinnedMissions(Config.Bind("PinnedMissions", "QuestIds", "",
+                "Persistent quest IDs, separated by |. Use PIN buttons in the Missions menu."), Logger);
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
             _nativeHudLayer = new NativeHudLayer(Logger);
-            Logger.LogInfo("Daily Quest Tracker v0.1.3 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
+            Logger.LogInfo("Daily Quest Tracker v0.2.0 loaded. Active missions: QuestManager runtime state. F6: panel, F9: diagnostic.");
         }
 
         private void OnEnable()
@@ -115,6 +119,7 @@ namespace StonewardsDailyQuestTracker
             if (_currencyAnchor != null) _currencyAnchor.Reset();
             if (_nativeHudLayer != null) _nativeHudLayer.Detach();
             _quests.Clear();
+            _pinnedQuests.Clear();
             _nextUpdate = 0f;
         }
 
@@ -157,6 +162,7 @@ namespace StonewardsDailyQuestTracker
                         _reader.ResetSession();
                         _currencyAnchor.Reset();
                         _quests.Clear();
+                        _pinnedQuests.Clear();
                     }
                     _wasConnected = false;
                     _nativeHudLayer.Detach();
@@ -169,6 +175,7 @@ namespace StonewardsDailyQuestTracker
                     _wasConnected = true;
                     _nextUpdate = 0f;
                 }
+                _pinned.UpdateMenu();
                 // The layer needs the game's UI Toolkit panel. Currency
                 // discovery is also the bounded way to find that panel.
                 if ((_anchorToCurrencyHud.Value && _corner.Value == PanelCorner.TopRight) ||
@@ -187,6 +194,7 @@ namespace StonewardsDailyQuestTracker
                     _nextUpdate = Time.unscaledTime + _refresh.Value;
                     // Cheap, direct reads of only selected DAILY runtime missions.
                     _quests = _reader.ReadDailyQuests();
+                    _pinnedQuests = _pinned.Read();
                 }
 
                 if (_nativeHudLayer.Attached)
@@ -205,7 +213,7 @@ namespace StonewardsDailyQuestTracker
                         _autoScaleToResolution.Value, _completedQuestMode.Value,
                         _showMissingDataNotice.Value, currencyBounds,
                         _currencyGap.Value, _reader.TotalDailyQuests,
-                        _reader.HasSeenDailyQuests);
+                        _reader.HasSeenDailyQuests, _pinnedQuests);
                 }
             }
             catch (Exception ex)
@@ -251,7 +259,7 @@ namespace StonewardsDailyQuestTracker
             if (!_enabled.Value || !_visible || !NetworkClient.active || IsBlocked())
                 return;
             if (_quests.Count == 0 && !_showMissingDataNotice.Value &&
-                !_reader.HasSeenDailyQuests)
+                !_reader.HasSeenDailyQuests && _pinnedQuests.Count == 0)
                 return;
 
             Rect badge;
@@ -263,6 +271,7 @@ namespace StonewardsDailyQuestTracker
                 _completedQuestMode.Value, _showMissingDataNotice.Value,
                 currencyBounds, _currencyGap.Value,
                 _reader.TotalDailyQuests, _reader.HasSeenDailyQuests,
+                _pinnedQuests,
                 unitsPerPixelX, unitsPerPixelY,
                 originScreenX, originScreenY);
         }
