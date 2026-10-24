@@ -253,9 +253,10 @@ namespace StonewardsDailyQuestTracker
                     : Color.clear;
 
             Image glyph = pin.Q<Image>("DailyQuestTrackerPinGlyph");
+            // Do not recolor the approved original artwork. Selection is
+            // expressed by the button frame/background only.
             if (glyph != null)
-                glyph.tintColor = selected || hovering
-                    ? Color.white : new Color(.88f, .83f, .75f, .90f);
+                glyph.tintColor = Color.white;
             else
                 pin.style.color = selected || hovering
                     ? new Color(.98f, .79f, .51f) : new Color(.78f, .66f, .49f);
