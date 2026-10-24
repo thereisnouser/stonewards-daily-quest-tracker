@@ -135,7 +135,7 @@ namespace StonewardsDailyQuestTracker
                         };
                         pin.style.position = Position.Absolute;
                         pin.style.right = PinRightInset;
-                        pin.style.top = 9f;
+                        pin.style.top = 13f;
                         pin.style.width = PinSize;
                         pin.style.height = PinSize;
                         pin.style.borderLeftWidth = 1f;
@@ -232,13 +232,14 @@ namespace StonewardsDailyQuestTracker
         private void SetPinAppearance(Button pin, string id, bool hovering = false)
         {
             bool selected = _ids.Contains(id);
-            // Keep the game row itself as the button background. The old
-            // small slate box visually competed with Stonewards mission UI.
-            // Only show a burgundy/gold selection frame for pinned/hovered rows.
+
+            // A permanent, understated warm border helps the pin belong to
+            // Stonewards' burgundy-and-gold Missions interface. Hover and
+            // pinned states are brighter, but the original art never changes.
             Color edge = hovering ? new Color(1f, .87f, .58f, 1f)
                 : selected ? new Color(.98f, .76f, .38f, 1f)
-                : Color.clear;
-            float border = selected || hovering ? 2f : 0f;
+                : new Color(.58f, .47f, .30f, .95f);
+            float border = selected || hovering ? 2f : 1f;
             pin.style.borderLeftWidth = border;
             pin.style.borderRightWidth = border;
             pin.style.borderTopWidth = border;
@@ -248,18 +249,15 @@ namespace StonewardsDailyQuestTracker
             pin.style.borderTopColor = edge;
             pin.style.borderBottomColor = edge;
             pin.style.backgroundColor = hovering
-                ? new Color(.34f, .22f, .22f, .96f)
-                : selected ? new Color(.32f, .23f, .17f, .94f)
-                    : Color.clear;
+                ? new Color(.24f, .19f, .16f, .88f)
+                : selected ? new Color(.30f, .21f, .16f, .94f)
+                    : new Color(.14f, .14f, .16f, .72f);
 
             Image glyph = pin.Q<Image>("DailyQuestTrackerPinGlyph");
-            // Do not recolor the approved original artwork. Selection is
-            // expressed by the button frame/background only.
             if (glyph != null)
                 glyph.tintColor = Color.white;
             else
-                pin.style.color = selected || hovering
-                    ? new Color(.98f, .79f, .51f) : new Color(.78f, .66f, .49f);
+                pin.style.color = new Color(.98f, .79f, .51f);
             pin.tooltip = selected ? "Unpin mission" :
                 _ids.Count >= MaxPins ? "Five missions maximum" : "Pin mission";
         }
