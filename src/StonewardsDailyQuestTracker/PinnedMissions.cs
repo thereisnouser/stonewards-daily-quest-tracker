@@ -56,8 +56,11 @@ namespace StonewardsDailyQuestTracker
 
         // On the screenshot right:56 makes the PIN button overlap both the
         // completion tick and the reward. Keep it between progress and reward.
-        private const float PinRightInset = 174f;
-        private const float PinSize = 37f;
+        // In the game's mission row this centers the pin within the free
+        // space between the progress bar and the reward/checkmark column.
+        private const float PinRightInset = 260f;
+        private const float PinSize = 48f;
+        private readonly HashSet<Button> _hoveredPins = new HashSet<Button>();
 
         public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
         {
@@ -90,6 +93,7 @@ namespace StonewardsDailyQuestTracker
             if (menu == null || !menu.IsOpen)
             {
                 _buttons.Clear();
+                _hoveredPins.Clear();
                 return;
             }
 
@@ -131,7 +135,7 @@ namespace StonewardsDailyQuestTracker
                         };
                         pin.style.position = Position.Absolute;
                         pin.style.right = PinRightInset;
-                        pin.style.top = 12f;
+                        pin.style.top = 9f;
                         pin.style.width = PinSize;
                         pin.style.height = PinSize;
                         pin.style.borderLeftWidth = 1f;
@@ -155,10 +159,10 @@ namespace StonewardsDailyQuestTracker
                                 pickingMode = PickingMode.Ignore
                             };
                             glyph.style.position = Position.Absolute;
-                            glyph.style.left = 4f;
-                            glyph.style.top = 3f;
-                            glyph.style.width = 27f;
-                            glyph.style.height = 29f;
+                            glyph.style.left = 2f;
+                            glyph.style.top = 2f;
+                            glyph.style.width = 44f;
+                            glyph.style.height = 44f;
                             pin.Add(glyph);
                         }
                         else
@@ -171,9 +175,15 @@ namespace StonewardsDailyQuestTracker
                         }
                         var hoveredPin = pin;
                         pin.RegisterCallback<PointerEnterEvent>(evt =>
-                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData, true));
+                        {
+                            _hoveredPins.Add(hoveredPin);
+                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData, true);
+                        });
                         pin.RegisterCallback<PointerLeaveEvent>(evt =>
-                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData));
+                        {
+                            _hoveredPins.Remove(hoveredPin);
+                            SetPinAppearance(hoveredPin, (string)hoveredPin.userData);
+                        });
                         pin.RegisterCallback<PointerDownEvent>(evt => evt.StopPropagation());
                         pin.RegisterCallback<PointerUpEvent>(evt => evt.StopPropagation());
                         pin.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
@@ -182,7 +192,7 @@ namespace StonewardsDailyQuestTracker
                     _buttons[row] = pin;
                 }
                 pin.userData = id;
-                SetPinAppearance(pin, id);
+                SetPinAppearance(pin, id, _hoveredPins.Contains(pin));
             }
         }
 
@@ -216,32 +226,39 @@ namespace StonewardsDailyQuestTracker
             foreach (Button control in _buttons.Values)
                 if (control != null && control.panel != null &&
                     control.userData is string key)
-                    SetPinAppearance(control, key);
+                    SetPinAppearance(control, key, _hoveredPins.Contains(control));
         }
 
         private void SetPinAppearance(Button pin, string id, bool hovering = false)
         {
             bool selected = _ids.Contains(id);
-            // Subtle slate/burgundy button compatible with the game's menu;
-            // gold frame for tracking, brighter on hover.
-            Color edge = hovering ? new Color(1f, .85f, .56f, 1f) :
-                selected ? new Color(.98f, .78f, .38f, 1f) :
-                new Color(.60f, .55f, .44f, 1f);
+            // Keep the game row itself as the button background. The old
+            // small slate box visually competed with Stonewards mission UI.
+            // Only show a burgundy/gold selection frame for pinned/hovered rows.
+            Color edge = hovering ? new Color(1f, .87f, .58f, 1f)
+                : selected ? new Color(.98f, .76f, .38f, 1f)
+                : Color.clear;
+            float border = selected || hovering ? 2f : 0f;
+            pin.style.borderLeftWidth = border;
+            pin.style.borderRightWidth = border;
+            pin.style.borderTopWidth = border;
+            pin.style.borderBottomWidth = border;
             pin.style.borderLeftColor = edge;
             pin.style.borderRightColor = edge;
             pin.style.borderTopColor = edge;
             pin.style.borderBottomColor = edge;
             pin.style.backgroundColor = hovering
-                ? new Color(.34f, .23f, .23f, .98f)
-                : selected ? new Color(.38f, .27f, .18f, .98f)
-                    : new Color(.16f, .20f, .26f, .93f);
+                ? new Color(.34f, .22f, .22f, .96f)
+                : selected ? new Color(.32f, .23f, .17f, .94f)
+                    : Color.clear;
 
             Image glyph = pin.Q<Image>("DailyQuestTrackerPinGlyph");
             if (glyph != null)
                 glyph.tintColor = selected || hovering
-                    ? Color.white : new Color(.84f, .79f, .70f, .84f);
+                    ? Color.white : new Color(.88f, .83f, .75f, .90f);
             else
-                pin.style.color = edge;
+                pin.style.color = selected || hovering
+                    ? new Color(.98f, .79f, .51f) : new Color(.78f, .66f, .49f);
             pin.tooltip = selected ? "Unpin mission" :
                 _ids.Count >= MaxPins ? "Five missions maximum" : "Pin mission";
         }
