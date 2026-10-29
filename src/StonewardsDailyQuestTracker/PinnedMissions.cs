@@ -199,7 +199,8 @@ namespace StonewardsDailyQuestTracker
             {
                 _buttons.Clear();
                 _hoveredPins.Clear();
-                _frames.Clear();
+                // Keep cached pixel frames for UI rows the game reuses when
+                // MISSIONS is closed and reopened; otherwise borders vanish.
             }
 
             // Read initialized mission labels even before MISSIONS is opened,
