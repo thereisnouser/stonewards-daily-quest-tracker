@@ -4,7 +4,8 @@
 
 - Replace the placeholder PIN/ON text with a compact gold pixel-art pin icon, using muted, selected and hovered states. Position it away from completion checkmarks and rewards.
 - Show up to five pinned missions under daily quests, with live progress and green completion state.
-- Persist pinned mission IDs between launches in the BepInEx configuration.
+- Persist pinned mission IDs **and their exact localized game titles** between launches; completed missions no longer revert to reward IDs such as TOGGLER after restarting. Old pins recover their names when MISSIONS is opened.
+- Persist the title cache in BepInEx configuration without modifying game quest data.
 - Preserve game notifications above the HUD and keep native/legacy panel layouts consistent.
 
 ## 0.1.3
