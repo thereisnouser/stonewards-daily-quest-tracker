@@ -221,15 +221,53 @@ namespace StonewardsDailyQuestTracker
 
         private static void CenterPinVertically(VisualElement row, Button pin)
         {
-            if (row == null || pin == null || pin.parent != row) return;
-            float height = row.layout.height;
-            if (float.IsNaN(height) || float.IsInfinity(height) || height <= 0f)
+            if (row == null || pin == null || pin.parent != row || row.panel == null)
                 return;
-            // The minor offset aligns to the visible game plaque rather than
-            // the layout origin. The main position comes from actual geometry.
-            float y = Mathf.Max(0f,
-                Mathf.Round((height - PinSize) * .5f + PinVisualCenterOffset));
-            pin.style.top = y;
+
+            float height = row.layout.height;
+            if (float.IsNaN(height) || height <= 0f) return;
+
+            // Align to the real game's checkmark, or the progress bar when
+            // completion is hidden. The row container includes extra padding
+            // and is not centered over the visible mission plaque.
+            VisualElement check = Get(ButtonValidationIcon, row) as VisualElement;
+            VisualElement progress = Get(ButtonProgressBar, row) as VisualElement;
+            VisualElement reference = HasVisibleRect(check) ? check :
+                HasVisibleRect(progress) ? progress : null;
+
+            float center = height * .5f;
+            if (reference != null && row.worldBound.height > 0f)
+                center = (reference.worldBound.center.y - row.worldBound.yMin) *
+                         height / row.worldBound.height;
+
+            float size = PinSize;
+            if (HasVisibleRect(check) && check.worldBound.height >= 35f &&
+                check.worldBound.height <= 70f)
+                size = Mathf.Round(check.worldBound.height *
+                    height / row.worldBound.height);
+            size = Mathf.Clamp(size, 42f, 56f);
+
+            pin.style.width = size;
+            pin.style.height = size;
+            pin.style.top = Mathf.Round(Mathf.Max(0f, center - size * .5f));
+
+            Image glyph = pin.Q<Image>("DailyQuestTrackerPinGlyph");
+            if (glyph != null)
+            {
+                float inset = Mathf.Round((size - PinGlyphSize) * .5f);
+                glyph.style.left = inset;
+                glyph.style.top = inset;
+            }
+        }
+
+        private static bool HasVisibleRect(VisualElement element)
+        {
+            if (element == null || element.panel == null ||
+                element.resolvedStyle.display == DisplayStyle.None)
+                return false;
+            Rect bounds = element.worldBound;
+            return !float.IsNaN(bounds.y) && bounds.height > 8f &&
+                   !float.IsNaN(bounds.x) && bounds.width > 8f;
         }
 
         private static bool IsInside(VisualElement child, VisualElement parent)
