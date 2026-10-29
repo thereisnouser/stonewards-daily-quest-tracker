@@ -43,6 +43,8 @@ namespace StonewardsDailyQuestTracker
         private static readonly FieldInfo MenuDailyRoot = typeof(GlobalMissionMenu).GetField("dailyButtonListParent", Flags);
         private static readonly FieldInfo ButtonQuest = typeof(GlobalMissionButton).GetField("questSO", Flags);
         private static readonly FieldInfo ButtonDescription = typeof(GlobalMissionButton).GetField("missionDescription", Flags);
+        private static readonly FieldInfo ButtonValidationIcon = typeof(GlobalMissionButton).GetField("validationIcon", Flags);
+        private static readonly FieldInfo ButtonProgressBar = typeof(GlobalMissionButton).GetField("missionProgressBar", Flags);
 
         private readonly ConfigEntry<string> _saved;
         private readonly ManualLogSource _log;
@@ -60,11 +62,11 @@ namespace StonewardsDailyQuestTracker
         // space between the progress bar and the reward/checkmark column.
         private const float PinRightInset = 260f;
         // Compact circular control; keep the approved brass icon unchanged.
-        private const float PinSize = 42f;
-        private const float PinGlyphSize = 30f;
+        private const float PinSize = 50f;
+        private const float PinGlyphSize = 28f;
         // GlobalMissionButton's visual plaque sits slightly below its layout
         // origin; compensate without hard-coding the button's vertical top.
-        private const float PinVisualCenterOffset = 3f;
+        private const float PinVisualCenterOffset = 0f;
         private readonly HashSet<Button> _hoveredPins = new HashSet<Button>();
 
         public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
@@ -142,7 +144,7 @@ namespace StonewardsDailyQuestTracker
                         pin.style.right = PinRightInset;
                         // Center from the row's actual layout height, not a
                         // fixed Y coordinate (rows can scale with resolution).
-                        pin.style.top = 16f; // Fallback until layout is measured.
+                        pin.style.top = 10f; // Fallback until game geometry is measured.
                         pin.style.width = PinSize;
                         pin.style.height = PinSize;
                         float radius = PinSize * .5f;
