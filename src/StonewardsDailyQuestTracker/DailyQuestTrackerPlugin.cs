@@ -93,8 +93,13 @@ namespace StonewardsDailyQuestTracker
             _diagnosticKey = Config.Bind("Hotkeys", "DumpQuestDiagnostics", Key.F9,
                 "Write quest-system field names to BepInEx/config/StonewardsDailyQuestTracker-diagnostic.txt.");
 
-            _pinned = new PinnedMissions(Config.Bind("PinnedMissions", "QuestIds", "",
-                "Persistent quest IDs, separated by |. Use PIN buttons in the Missions menu."), Logger);
+            _pinned = new PinnedMissions(
+                Config.Bind("PinnedMissions", "QuestIds", "",
+                    "Persistent quest IDs, separated by |. Pin missions from the Missions menu."),
+                Config.Bind("PinnedMissions", "QuestTitles", "",
+                    "Automatically saved localized titles of pinned missions. " +
+                    "Used to restore labels when completed quests no longer have active runtime missions."),
+                Logger);
             _reader = new DailyQuestReader(Logger);
             _hud = new QuestHud();
             _currencyAnchor = new CurrencyHudAnchor(Logger);
