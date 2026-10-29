@@ -59,7 +59,12 @@ namespace StonewardsDailyQuestTracker
         // In the game's mission row this centers the pin within the free
         // space between the progress bar and the reward/checkmark column.
         private const float PinRightInset = 260f;
-        private const float PinSize = 48f;
+        // Compact circular control; keep the approved brass icon unchanged.
+        private const float PinSize = 42f;
+        private const float PinGlyphSize = 30f;
+        // GlobalMissionButton's visual plaque sits slightly below its layout
+        // origin; compensate without hard-coding the button's vertical top.
+        private const float PinVisualCenterOffset = 3f;
         private readonly HashSet<Button> _hoveredPins = new HashSet<Button>();
 
         public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
@@ -135,9 +140,17 @@ namespace StonewardsDailyQuestTracker
                         };
                         pin.style.position = Position.Absolute;
                         pin.style.right = PinRightInset;
-                        pin.style.top = 13f;
+                        // Center from the row's actual layout height, not a
+                        // fixed Y coordinate (rows can scale with resolution).
+                        pin.style.top = 16f; // Fallback until layout is measured.
                         pin.style.width = PinSize;
                         pin.style.height = PinSize;
+                        float radius = PinSize * .5f;
+                        pin.style.borderTopLeftRadius = radius;
+                        pin.style.borderTopRightRadius = radius;
+                        pin.style.borderBottomLeftRadius = radius;
+                        pin.style.borderBottomRightRadius = radius;
+                        pin.style.overflow = Overflow.Hidden;
                         pin.style.borderLeftWidth = 1f;
                         pin.style.borderRightWidth = 1f;
                         pin.style.borderTopWidth = 1f;
@@ -159,10 +172,13 @@ namespace StonewardsDailyQuestTracker
                                 pickingMode = PickingMode.Ignore
                             };
                             glyph.style.position = Position.Absolute;
-                            glyph.style.left = 2f;
-                            glyph.style.top = 2f;
-                            glyph.style.width = 44f;
-                            glyph.style.height = 44f;
+                            // Keep the original sprite pixel-sharp but give
+                            // it breathing room inside the circular border.
+                            float glyphInset = (PinSize - PinGlyphSize) * .5f;
+                            glyph.style.left = glyphInset;
+                            glyph.style.top = glyphInset;
+                            glyph.style.width = PinGlyphSize;
+                            glyph.style.height = PinGlyphSize;
                             pin.Add(glyph);
                         }
                         else
@@ -188,12 +204,30 @@ namespace StonewardsDailyQuestTracker
                         pin.RegisterCallback<PointerUpEvent>(evt => evt.StopPropagation());
                         pin.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
                         row.Add(pin);
+                        // Recenter when the game changes layout (resolution,
+                        // panel resize, localization or row style changes).
+                        row.RegisterCallback<GeometryChangedEvent>(evt =>
+                            CenterPinVertically(row, pin));
                     }
                     _buttons[row] = pin;
                 }
+                CenterPinVertically(row, pin);
                 pin.userData = id;
                 SetPinAppearance(pin, id, _hoveredPins.Contains(pin));
             }
+        }
+
+        private static void CenterPinVertically(VisualElement row, Button pin)
+        {
+            if (row == null || pin == null || pin.parent != row) return;
+            float height = row.layout.height;
+            if (float.IsNaN(height) || float.IsInfinity(height) || height <= 0f)
+                return;
+            // The minor offset aligns to the visible game plaque rather than
+            // the layout origin. The main position comes from actual geometry.
+            float y = Mathf.Max(0f,
+                Mathf.Round((height - PinSize) * .5f + PinVisualCenterOffset));
+            pin.style.top = y;
         }
 
         private static bool IsInside(VisualElement child, VisualElement parent)
