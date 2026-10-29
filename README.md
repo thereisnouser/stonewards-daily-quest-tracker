@@ -43,7 +43,8 @@ The file is generated after the mod has launched. The principal options are:
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `PinnedMissions.QuestIds` | *(empty)* | Persistent IDs of pinned normal missions (managed automatically by PIN buttons) |\n| `General.Enabled` | `true` | Enable the tracker |
+| `PinnedMissions.QuestIds` | *(empty)* | Persistent IDs of pinned normal missions (managed automatically by PIN buttons) |
+| `PinnedMissions.QuestTitles` | *(empty)* | Automatically saved mission names; fixes titles after restarting, including completed missions |\n| `General.Enabled` | `true` | Enable the tracker |
 | `General.CompletedQuestMode` | `Hide` | `Hide` completed quests or `Mark` them |
 | `General.ShowMissingQuestData` | `true` | Show a small notice when daily quest data is unavailable |
 | `General.RefreshSeconds` | `1.25` | Seconds between quest-data reads |
