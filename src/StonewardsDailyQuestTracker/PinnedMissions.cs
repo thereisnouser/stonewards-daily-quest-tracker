@@ -291,7 +291,7 @@ namespace StonewardsDailyQuestTracker
             element.style.height = Mathf.Max(1f, Mathf.Round(rect.height * factor));
         }
 
-        private static void CenterPinVertically(VisualElement row, Button pin)
+        private void CenterPinVertically(VisualElement row, Button pin)
         {
             if (row == null || pin == null || pin.parent != row || row.panel == null)
                 return;
