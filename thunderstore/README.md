@@ -36,7 +36,8 @@ Important settings:
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `PinnedMissions.QuestIds` | *(empty)* | Saved mission pins; managed from the Missions screen |\n| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
+| `PinnedMissions.QuestIds` | *(empty)* | Saved mission pins; managed from the Missions screen |
+| `PinnedMissions.QuestTitles` | *(empty)* | Saved localized mission names so titles survive game restarts |\n| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
 | `Appearance.AnchorToCurrencyHud` | `true` | Place the panel below the coin HUD when detected |
 | `Appearance.RenderBehindGameUI` | `true` | Prefer native rendering beneath game notifications |
 | `Appearance.CurrencyGap` | `10` | Spacing below the coins, in pixels |
