@@ -171,22 +171,29 @@ namespace StonewardsDailyQuestTracker
                         pin.style.top = 10f; // Fallback until game geometry is measured.
                         pin.style.width = PinSize;
                         pin.style.height = PinSize;
-                        float radius = PinSize * .5f;
-                        pin.style.borderTopLeftRadius = radius;
-                        pin.style.borderTopRightRadius = radius;
-                        pin.style.borderBottomLeftRadius = radius;
-                        pin.style.borderBottomRightRadius = radius;
-                        pin.style.overflow = Overflow.Hidden;
-                        pin.style.borderLeftWidth = 1f;
-                        pin.style.borderRightWidth = 1f;
-                        pin.style.borderTopWidth = 1f;
-                        pin.style.borderBottomWidth = 1f;
+                        // Native border-radius is anti-aliased and looks
+                        // out of place beside the game's pixel-stepped frames.
+                        pin.style.borderTopLeftRadius = 0f;
+                        pin.style.borderTopRightRadius = 0f;
+                        pin.style.borderBottomLeftRadius = 0f;
+                        pin.style.borderBottomRightRadius = 0f;
+                        pin.style.borderLeftWidth = 0f;
+                        pin.style.borderRightWidth = 0f;
+                        pin.style.borderTopWidth = 0f;
+                        pin.style.borderBottomWidth = 0f;
+                        pin.style.backgroundColor = Color.clear;
+                        pin.style.overflow = Overflow.Visible;
+                        pin.style.marginLeft = 0f;
+                        pin.style.marginRight = 0f;
+                        pin.style.marginTop = 0f;
+                        pin.style.marginBottom = 0f;
                         pin.style.paddingLeft = 0f;
                         pin.style.paddingRight = 0f;
                         pin.style.paddingTop = 0f;
                         pin.style.paddingBottom = 0f;
                         pin.text = "";
                         pin.userData = id;
+                        BuildPinFrame(pin);
 
                         if (_pinIcon != null)
                         {
