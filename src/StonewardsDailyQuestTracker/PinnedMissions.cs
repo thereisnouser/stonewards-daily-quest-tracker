@@ -194,15 +194,20 @@ namespace StonewardsDailyQuestTracker
             _nextMenuUpdate = Time.unscaledTime + MenuRefreshSeconds;
 
             GlobalMissionMenu menu = GlobalMissionMenu.Instance;
-            if (menu == null || !menu.IsOpen)
+            bool open = menu != null && menu.IsOpen;
+            if (!open)
             {
                 _buttons.Clear();
                 _hoveredPins.Clear();
-                return;
+                _frames.Clear();
             }
 
-            IList items = Get(MenuButtons, menu) as IList;
-            VisualElement dailyRoot = Get(MenuDailyRoot, menu) as VisualElement;
+            // Read initialized mission labels even before MISSIONS is opened,
+            // when the game has already built its UI. Older pin-only configs
+            // can therefore recover titles without re-pinning each quest.
+            IList items = menu != null ? Get(MenuButtons, menu) as IList : null;
+            VisualElement dailyRoot = menu != null
+                ? Get(MenuDailyRoot, menu) as VisualElement : null;
             if (items == null || ButtonQuest == null) return;
 
             // A bounded scan of the rows already created by the game. The
@@ -210,7 +215,7 @@ namespace StonewardsDailyQuestTracker
             for (int i = 0; i < items.Count; i++)
             {
                 GlobalMissionButton row = items[i] as GlobalMissionButton;
-                if (row == null || row.panel == null) continue;
+                if (row == null) continue;
                 if (dailyRoot != null && IsInside(row, dailyRoot)) continue;
 
                 object quest = Get(ButtonQuest, row);
@@ -218,8 +223,14 @@ namespace StonewardsDailyQuestTracker
                 if (string.IsNullOrWhiteSpace(id)) continue;
 
                 Label description = Get(ButtonDescription, row) as Label;
-                if (description != null && !string.IsNullOrWhiteSpace(description.text))
-                    _titles[id] = description.text;
+                if (description != null && _ids.Contains(id))
+                    RememberTitle(id, description.text);
+                else if (description != null && IsDisplayTitle(id, description.text))
+                    _titles[id] = description.text.Trim();
+
+                // Capture the real label even while the menu is closed, but
+                // only attach interactive controls to visible, live rows.
+                if (!open || row.panel == null) continue;
 
                 Button pin;
                 if (!_buttons.TryGetValue(row, out pin) ||
