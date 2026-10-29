@@ -250,6 +250,47 @@ namespace StonewardsDailyQuestTracker
             }
         }
 
+        private void BuildPinFrame(Button pin)
+        {
+            var frame = new PinFrame();
+            for (int i = 0; i < 7; i++)
+            {
+                var outer = new VisualElement { pickingMode = PickingMode.Ignore };
+                outer.style.position = Position.Absolute;
+                pin.Add(outer);
+                frame.Outer[i] = outer;
+            }
+            for (int i = 0; i < 7; i++)
+            {
+                var inner = new VisualElement { pickingMode = PickingMode.Ignore };
+                inner.style.position = Position.Absolute;
+                pin.Add(inner);
+                frame.Inner[i] = inner;
+            }
+            _frames[pin] = frame;
+            ResizePinFrame(frame, PinSize);
+        }
+
+        private static void ResizePinFrame(PinFrame frame, float size)
+        {
+            if (Mathf.Abs(frame.Size - size) < .1f) return;
+            float factor = size / 50f;
+            for (int i = 0; i < 7; i++)
+            {
+                SetFrameRect(frame.Outer[i], FrameOuter[i], factor);
+                SetFrameRect(frame.Inner[i], FrameInner[i], factor);
+            }
+            frame.Size = size;
+        }
+
+        private static void SetFrameRect(VisualElement element, Rect rect, float factor)
+        {
+            element.style.left = Mathf.Round(rect.x * factor);
+            element.style.top = Mathf.Round(rect.y * factor);
+            element.style.width = Mathf.Max(1f, Mathf.Round(rect.width * factor));
+            element.style.height = Mathf.Max(1f, Mathf.Round(rect.height * factor));
+        }
+
         private static void CenterPinVertically(VisualElement row, Button pin)
         {
             if (row == null || pin == null || pin.parent != row || row.panel == null)
