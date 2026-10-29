@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using UnityEngine;
@@ -47,6 +48,7 @@ namespace StonewardsDailyQuestTracker
         private static readonly FieldInfo ButtonProgressBar = typeof(GlobalMissionButton).GetField("missionProgressBar", Flags);
 
         private readonly ConfigEntry<string> _saved;
+        private readonly ConfigEntry<string> _savedTitles;
         private readonly ManualLogSource _log;
         private readonly List<string> _ids = new List<string>(MaxPins);
         private readonly Dictionary<string, string> _titles =
@@ -93,9 +95,11 @@ namespace StonewardsDailyQuestTracker
         private readonly Dictionary<Button, PinFrame> _frames =
             new Dictionary<Button, PinFrame>();
 
-        public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
+        public PinnedMissions(ConfigEntry<string> saved, ConfigEntry<string> savedTitles,
+            ManualLogSource log)
         {
             _saved = saved;
+            _savedTitles = savedTitles;
             _log = log;
             _pinIcon = LoadPinIcon(log);
             Load();
@@ -113,6 +117,75 @@ namespace StonewardsDailyQuestTracker
                     _ids.Count >= MaxPins) continue;
                 _ids.Add(id);
             }
+            LoadTitles();
+        }
+
+        // Saved pin IDs alone cannot reconstruct a mission's display name:
+        // completed GLOBAL missions may no longer have a RuntimeMission.
+        // Preserve the real localized label from the game's Missions menu.
+        // Base64 keeps localized text and separators safe in BepInEx config.
+        private void LoadTitles()
+        {
+            _titles.Clear();
+            foreach (string entry in (_savedTitles.Value ?? "").Split('|'))
+            {
+                if (string.IsNullOrEmpty(entry)) continue;
+                int separator = entry.IndexOf(':');
+                if (separator <= 0 || separator == entry.Length - 1) continue;
+                try
+                {
+                    string id = Encoding.UTF8.GetString(Convert.FromBase64String(
+                        entry.Substring(0, separator)));
+                    string title = Encoding.UTF8.GetString(Convert.FromBase64String(
+                        entry.Substring(separator + 1)));
+                    if (_ids.Contains(id) && IsDisplayTitle(id, title))
+                        _titles[id] = title;
+                }
+                catch (FormatException) { }
+                catch (ArgumentException) { }
+            }
+        }
+
+        private void SaveTitles()
+        {
+            var entries = new List<string>(_ids.Count);
+            foreach (string id in _ids)
+            {
+                string title;
+                if (!_titles.TryGetValue(id, out title) || !IsDisplayTitle(id, title))
+                    continue;
+                entries.Add(Convert.ToBase64String(Encoding.UTF8.GetBytes(id)) +
+                    ":" + Convert.ToBase64String(Encoding.UTF8.GetBytes(title)));
+            }
+            string value = string.Join("|", entries.ToArray());
+            if (_savedTitles.Value != value)
+                _savedTitles.Value = value;
+        }
+
+        private void RememberTitle(string id, string title)
+        {
+            if (!IsDisplayTitle(id, title)) return;
+            title = title.Trim();
+            string existing;
+            if (_titles.TryGetValue(id, out existing) && existing == title)
+                return;
+            _titles[id] = title;
+            if (_ids.Contains(id))
+                SaveTitles();
+        }
+
+        private static bool IsDisplayTitle(string id, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > 300)
+                return false;
+            // A raw quest ID such as QUEST_UNLOCK_TOGGLER used to appear as
+            // "TOGGLER" after restarting; that is not a mission title.
+            string compact = id ?? "";
+            if (compact.StartsWith("QUEST_", StringComparison.OrdinalIgnoreCase))
+                compact = compact.Substring(6);
+            compact = compact.Replace("_", " ");
+            return !string.Equals(compact, value.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                   !string.Equals(id, value.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         public void UpdateMenu()
