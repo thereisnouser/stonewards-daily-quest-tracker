@@ -68,6 +68,30 @@ namespace StonewardsDailyQuestTracker
         // origin; compensate without hard-coding the button's vertical top.
         private const float PinVisualCenterOffset = 0f;
         private readonly HashSet<Button> _hoveredPins = new HashSet<Button>();
+        // Seven rectangular bands approximate a crisp pixel-art circle.
+        // Separate outline and inset layers create a stepped gold frame.
+        private static readonly Rect[] FrameOuter =
+        {
+            new Rect(18,0,14,3), new Rect(11,3,28,5),
+            new Rect(6,8,38,5), new Rect(1,13,48,24),
+            new Rect(6,37,38,5), new Rect(11,42,28,5),
+            new Rect(18,47,14,3)
+        };
+        private static readonly Rect[] FrameInner =
+        {
+            new Rect(18,3,14,2), new Rect(13,5,24,5),
+            new Rect(8,10,34,4), new Rect(3,14,44,22),
+            new Rect(8,36,34,4), new Rect(13,40,24,5),
+            new Rect(18,45,14,2)
+        };
+        private sealed class PinFrame
+        {
+            internal readonly VisualElement[] Outer = new VisualElement[7];
+            internal readonly VisualElement[] Inner = new VisualElement[7];
+            internal float Size = -1f;
+        }
+        private readonly Dictionary<Button, PinFrame> _frames =
+            new Dictionary<Button, PinFrame>();
 
         public PinnedMissions(ConfigEntry<string> saved, ManualLogSource log)
         {
