@@ -319,6 +319,9 @@ namespace StonewardsDailyQuestTracker
                     height / row.worldBound.height);
             size = Mathf.Clamp(size, 42f, 56f);
 
+            PinFrame frame;
+            if (_frames.TryGetValue(pin, out frame))
+                ResizePinFrame(frame, size);
             pin.style.width = size;
             pin.style.height = size;
             pin.style.top = Mathf.Round(Mathf.Max(0f, center - size * .5f));
