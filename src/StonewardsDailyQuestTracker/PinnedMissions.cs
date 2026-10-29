@@ -454,6 +454,9 @@ namespace StonewardsDailyQuestTracker
                 _saved.Value = string.Join("|", _ids.ToArray());
                 _log.LogInfo("Pinned global mission: " + id);
             }
+            // Persist the exact localized label captured from MISSIONS, not
+            // a string guessed from the quest's internal ID.
+            SaveTitles();
             _nextMenuUpdate = 0f;
             // Refresh immediately; the menu should never show a stale state.
             foreach (Button control in _buttons.Values)
@@ -612,15 +615,22 @@ namespace StonewardsDailyQuestTracker
                         completed = completed || current.Value >= target.Value ||
                             Get(MissionReached, found) is bool reached && reached;
                     }
+                    // Description is the actual mission objective. Title is
+                    // often the reward/unlock name (e.g. TOGGLER), so never
+                    // let the generic Title getter replace a saved objective.
                     string liveTitle = Get(MissionDescription, found) as string;
-                    if (string.IsNullOrWhiteSpace(liveTitle))
-                        liveTitle = Get(MissionTitle, found) as string;
-                    if (!string.IsNullOrWhiteSpace(liveTitle))
-                        _titles[id] = liveTitle;
+                    string savedTitle;
+                    if (!_titles.TryGetValue(id, out savedTitle) ||
+                        !IsDisplayTitle(id, savedTitle))
+                        RememberTitle(id, liveTitle);
                 }
                 string title;
-                if (!_titles.TryGetValue(id, out title))
-                    title = id.Replace("QUEST_", "").Replace("_", " ");
+                if (!_titles.TryGetValue(id, out title) ||
+                    !IsDisplayTitle(id, title))
+                    // Existing pinned quests saved by older versions have
+                    // IDs but no stored title. Once MISSIONS is opened, the
+                    // real UI label is recovered and persisted automatically.
+                    title = "Open MISSIONS for title";
                 result.Add(new QuestView
                 {
                     Id = id,
