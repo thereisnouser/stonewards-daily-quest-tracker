@@ -2,7 +2,7 @@
   "name": "DailyQuestTracker",
   "version_number": "0.2.0",
   "website_url": "https://github.com/thereisnouser/stonewards-daily-quest-tracker",
-  "description": "Track daily quests and pin up to 5 standard Stonewards missions from General, Characters, Tomes, or Rings. Live progress, adaptive HUD and native notifications.",
+  "description": "Track daily quests and pin up to five standard Stonewards missions in a compact client-side HUD with live progress.",
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2305"
   ]

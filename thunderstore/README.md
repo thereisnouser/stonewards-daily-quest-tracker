@@ -1,73 +1,52 @@
 # Stonewards Daily Quest Tracker
 
-**See your daily quests and live progress during a run without constantly opening the Missions menu.** Daily Quest Tracker adds a compact, game-styled HUD that follows your active objectives.
+**Keep daily quests and pinned missions visible while playing Stonewards. Follow live progress in a compact, game-styled HUD without repeatedly opening the Missions menu.**
 
 ## ✨ Features
 
-- **Pin standard missions** — select objectives from General, Characters, Tomes, or Rings and see them under daily quests.
-- **Live progress** — daily quest descriptions and current/target counters taken from the game.
-- **Correct quest totals** — remaining objectives are counted against the full daily total, even after completing quests.
-- **Completed quest options** — automatically hide finished quests or keep them with green checkmarks.
-- **Convenient placement** — follow the coin display when detected, or choose a corner and offsets manually.
-- **Adaptive display** — adjustable size, resolution scaling, and automatic hiding in supported game menus.
-- **Native notifications** — show game notifications above the tracker when native UI rendering is available.
-
-## 📌 Pin other missions
-
-Open **MISSIONS** and use the **PIN** buttons in the **General**, **Characters**, **Tomes**, and **Rings** tabs. Pinned objectives appear under daily quests in a separate **PINNED QUESTS** section with live numeric progress.
-
-Press **ON** to unpin a mission. Up to **5 missions** can be pinned, and the selection persists after restarting Stonewards. Completed pinned missions are marked green until unpinned.
+- **Live daily progress** — see current objectives, numeric progress, and the correct remaining daily count.
+- **Pin other missions** — use a gold pushpin icon to track up to five missions from **General**, **Characters**, **Tomes**, or **Rings**.
+- **Persistent selections** — pinned missions and their original names stay saved between launches.
+- **Completion options** — hide completed daily quests or mark them with checkmarks; finished pinned missions remain until unpinned.
+- **Compact game-style HUD** — pixel-art details, adaptive scaling, and positioning below the coin counter when available.
+- **Game notifications on top** — native UI rendering allows quest and player notifications to overlap the tracker.
 
 ## 🎮 How to use
 
-Join a session to see your daily objectives automatically. Press **F6** to show or hide the tracker.
+Join a game to see your daily quests automatically. Open **MISSIONS** and select a standard mission tab (**General**, **Characters**, **Tomes**, or **Rings**). Click the **gold pushpin icon** on a row to add that mission to **PINNED QUESTS** below the daily list. Click it again to remove the pin. You can keep up to **five** pinned missions.
 
-In the default **Hide** mode, completed quests disappear and the remaining count keeps its original total. When all daily objectives are finished, a short completion message appears. Use **Mark** mode if you want completed quests to remain visible.
-
-**F9** exports a diagnostic report for troubleshooting only. Both keys are configurable.
+Press **F6** to toggle the tracker. The optional **F9** key saves a diagnostic report. Both keys are configurable. Daily quests use the **Hide** completion mode by default; switch to **Mark** to keep finished daily objectives visible.
 
 ## ⚙️ Configuration
 
-Edit the BepInEx configuration in your active profile:
-
-`BepInEx/config/community.stonewards.dailyquesttracker.cfg`
-
-Important settings:
+Settings are stored in the active profile at `BepInEx/config/community.stonewards.dailyquesttracker.cfg`:
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `PinnedMissions.QuestIds` | *(empty)* | Saved mission pins; managed from the Missions screen |
-| `PinnedMissions.QuestTitles` | *(empty)* | Saved localized mission names so titles survive game restarts |\n| `General.CompletedQuestMode` | `Hide` | Hide finished quests or use `Mark` for checkmarks |
-| `Appearance.AnchorToCurrencyHud` | `true` | Place the panel below the coin HUD when detected |
-| `Appearance.RenderBehindGameUI` | `true` | Prefer native rendering beneath game notifications |
-| `Appearance.CurrencyGap` | `10` | Spacing below the coins, in pixels |
-| `Appearance.Anchor` | `TopRight` | Manual placement corner |
-| `Appearance.HorizontalOffset` | `18` | Manual horizontal inset |
-| `Appearance.VerticalOffset` | `240` | Manual vertical inset |
-| `Appearance.AutoScaleToResolution` | `true` | Adapt the panel to screen resolution |
-| `Appearance.Scale` | `1.0` | Panel size multiplier |
-| `Appearance.ReadabilityScale` | `1.12` | Extra readability scaling |
+| `General.CompletedQuestMode` | `Hide` | Hide completed daily quests or use `Mark` for checkmarks |
+| `Appearance.AnchorToCurrencyHud` | `true` | Follow the game's coin HUD when detected |
+| `Appearance.RenderBehindGameUI` | `true` | Prefer the native renderer beneath game notifications |
+| `Appearance.Scale` | `1.0` | Change the overlay size |
+| `Appearance.AutoScaleToResolution` | `true` | Adapt overlay size to screen resolution |
+| `Hotkeys.TogglePanel` | `F6` | Show or hide the tracker |
 
-To show completed quests with checkmarks:
-
-```ini
-[General]
-CompletedQuestMode = Mark
-```
+Your pins and their display names are stored automatically under `PinnedMissions.QuestIds` and `PinnedMissions.QuestTitles`; no manual setup is needed.
 
 ## 📦 Installation
 
-Install **DailyQuestTracker** using **r2modman** or another compatible Thunderstore mod manager. The required BepInExPack dependency is installed automatically by the manager. Launch Stonewards through your modded profile.
+Install **DailyQuestTracker** with **r2modman** or another compatible Thunderstore mod manager. The declared **BepInExPack** dependency is installed by the manager. Launch Stonewards through the modded profile.
 
 ## 🔧 Compatibility
 
-- **Game:** Stonewards; developed against version **0.2.3**.
-- **Mod loader:** BepInEx 5.
-- **Multiplayer:** Client-side; other players and the host do not need to install the mod.
+- **Game:** Tested with **Stonewards 0.2.3**.
+- **Mod loader:** **BepInEx 5**.
+- **Multiplayer:** **Client-side** — only players who want the HUD need the mod; no host installation is required.
 
 ## ⚠️ Known limitations
 
-If the currency HUD cannot be detected, the tracker uses your configured corner and offsets. Notification layering relies on the game's native UI; legacy fallback rendering may appear above some notifications. Future game UI or quest-system updates may require compatibility changes.
+- Completed pinned missions may display **DONE** instead of numeric progress if the game no longer provides an active counter.
+- After updating from an older version, open **MISSIONS** once if a previously pinned mission's name has not yet been restored.
+- Coin anchoring and notification layering depend on game UI elements being available; the mod falls back to manual positioning or legacy rendering when necessary.
 
 ## 🔗 Links
 
